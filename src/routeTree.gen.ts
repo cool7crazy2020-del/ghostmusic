@@ -10,33 +10,141 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ExploreRouteImport } from './routes/explore'
+import { Route as HistoryRouteImport } from './routes/history'
+import { Route as LibraryRouteImport } from './routes/library'
+import { Route as LikedRouteImport } from './routes/liked'
+import { Route as SearchRouteImport } from './routes/search'
+import { Route as AlbumAlbumIdRouteImport } from './routes/album.$albumId'
+import { Route as PlaylistsIndexRouteImport } from './routes/playlists.index'
+import { Route as PlaylistsPlaylistIdRouteImport } from './routes/playlists.$playlistId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ExploreRoute = ExploreRouteImport.update({
+  id: '/explore',
+  path: '/explore',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryRoute = LibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LikedRoute = LikedRouteImport.update({
+  id: '/liked',
+  path: '/liked',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlbumAlbumIdRoute = AlbumAlbumIdRouteImport.update({
+  id: '/album/$albumId',
+  path: '/album/$albumId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlaylistsIndexRoute = PlaylistsIndexRouteImport.update({
+  id: '/playlists/',
+  path: '/playlists/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlaylistsPlaylistIdRoute = PlaylistsPlaylistIdRouteImport.update({
+  id: '/playlists/$playlistId',
+  path: '/playlists/$playlistId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/explore': typeof ExploreRoute
+  '/history': typeof HistoryRoute
+  '/library': typeof LibraryRoute
+  '/liked': typeof LikedRoute
+  '/search': typeof SearchRoute
+  '/album/$albumId': typeof AlbumAlbumIdRoute
+  '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
+  '/playlists/': typeof PlaylistsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/explore': typeof ExploreRoute
+  '/history': typeof HistoryRoute
+  '/library': typeof LibraryRoute
+  '/liked': typeof LikedRoute
+  '/search': typeof SearchRoute
+  '/album/$albumId': typeof AlbumAlbumIdRoute
+  '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
+  '/playlists': typeof PlaylistsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/explore': typeof ExploreRoute
+  '/history': typeof HistoryRoute
+  '/library': typeof LibraryRoute
+  '/liked': typeof LikedRoute
+  '/search': typeof SearchRoute
+  '/album/$albumId': typeof AlbumAlbumIdRoute
+  '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
+  '/playlists/': typeof PlaylistsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/explore'
+    | '/history'
+    | '/library'
+    | '/liked'
+    | '/search'
+    | '/album/$albumId'
+    | '/playlists/$playlistId'
+    | '/playlists/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/explore'
+    | '/history'
+    | '/library'
+    | '/liked'
+    | '/search'
+    | '/album/$albumId'
+    | '/playlists/$playlistId'
+    | '/playlists'
+  id:
+    | '__root__'
+    | '/'
+    | '/explore'
+    | '/history'
+    | '/library'
+    | '/liked'
+    | '/search'
+    | '/album/$albumId'
+    | '/playlists/$playlistId'
+    | '/playlists/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ExploreRoute: typeof ExploreRoute
+  HistoryRoute: typeof HistoryRoute
+  LibraryRoute: typeof LibraryRoute
+  LikedRoute: typeof LikedRoute
+  SearchRoute: typeof SearchRoute
+  AlbumAlbumIdRoute: typeof AlbumAlbumIdRoute
+  PlaylistsPlaylistIdRoute: typeof PlaylistsPlaylistIdRoute
+  PlaylistsIndexRoute: typeof PlaylistsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +156,75 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/explore': {
+      id: '/explore'
+      path: '/explore'
+      fullPath: '/explore'
+      preLoaderRoute: typeof ExploreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library': {
+      id: '/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LibraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/liked': {
+      id: '/liked'
+      path: '/liked'
+      fullPath: '/liked'
+      preLoaderRoute: typeof LikedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/album/$albumId': {
+      id: '/album/$albumId'
+      path: '/album/$albumId'
+      fullPath: '/album/$albumId'
+      preLoaderRoute: typeof AlbumAlbumIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/playlists/': {
+      id: '/playlists/'
+      path: '/playlists'
+      fullPath: '/playlists/'
+      preLoaderRoute: typeof PlaylistsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/playlists/$playlistId': {
+      id: '/playlists/$playlistId'
+      path: '/playlists/$playlistId'
+      fullPath: '/playlists/$playlistId'
+      preLoaderRoute: typeof PlaylistsPlaylistIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ExploreRoute: ExploreRoute,
+  HistoryRoute: HistoryRoute,
+  LibraryRoute: LibraryRoute,
+  LikedRoute: LikedRoute,
+  SearchRoute: SearchRoute,
+  AlbumAlbumIdRoute: AlbumAlbumIdRoute,
+  PlaylistsPlaylistIdRoute: PlaylistsPlaylistIdRoute,
+  PlaylistsIndexRoute: PlaylistsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
