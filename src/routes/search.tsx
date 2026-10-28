@@ -112,7 +112,7 @@ const videoPlayer = selectedVideo ? (
           Discover your next obsession.
         </p>
       </div>
-
+{videoPlayer}
       {!query ? (
         <Section title="Browse by genre">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
@@ -145,16 +145,19 @@ const videoPlayer = selectedVideo ? (
             icon={<SearchX />}
             title="Search failed"
           >
-            We couldn't load YouTube results. Please try again.
+            We couldn't load results. Please try again.
           </EmptyState>
         </div>
       ) : results.length > 0 ? (
         <Section title="YouTube results">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {results.map((result) => (
-              <a
-                key={result.videoId}
-                href={`https://www.youtube.com/watch?v=${encodeURIComponent(result.videoId)}`}
+             <button
+  type="button"
+  key={result.videoId}
+  onClick={() => setSelectedVideo(result)}
+  className="group w-full overflow-hidden rounded-xl border border-border bg-card text-left transition-colors hover:bg-accent"
+>
                 target="_blank"
                 rel="noreferrer"
                 className="group overflow-hidden rounded-xl border border-border bg-card transition-colors hover:bg-accent"
