@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query"; import { useState } from "react";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query"; 
+import { useState } from "react";
 import { SearchX, ExternalLink } from "lucide-react";
 
 import { Artwork } from "@/components/ghost/Artwork";
@@ -152,15 +153,11 @@ const videoPlayer = selectedVideo ? (
         <Section title="YouTube results">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {results.map((result) => (
-             <button
-  type="button"
-  key={result.videoId}
-  onClick={() => setSelectedVideo(result)}
-  className="group w-full overflow-hidden rounded-xl border border-border bg-card text-left transition-colors hover:bg-accent"
->
-                target="_blank"
-                rel="noreferrer"
-                className="group overflow-hidden rounded-xl border border-border bg-card transition-colors hover:bg-accent"
+              <button
+                type="button"
+                key={result.videoId}
+                onClick={() => setSelectedVideo(result)}
+                className="group w-full overflow-hidden rounded-xl border border-border bg-card text-left transition-colors hover:bg-accent"
               >
                 {result.thumbnail && (
                   <img
@@ -186,7 +183,7 @@ const videoPlayer = selectedVideo ? (
                     className="mt-1 shrink-0 text-muted-foreground"
                   />
                 </div>
-              </a>
+              </button>
             ))}
           </div>
         </Section>
