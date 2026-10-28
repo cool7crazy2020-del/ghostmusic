@@ -79,7 +79,7 @@ function SearchPage() {
         </h1>
 
         <p className="mt-2 text-sm text-muted-foreground">
-          Discover music on YouTube with GHOST Music.
+          Discover your next obsession.
         </p>
       </div>
 
