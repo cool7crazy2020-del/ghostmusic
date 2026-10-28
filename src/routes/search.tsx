@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query"; import { useState } from "react";
 import { SearchX, ExternalLink } from "lucide-react";
 
 import { Artwork } from "@/components/ghost/Artwork";
@@ -44,6 +44,7 @@ export const Route = createFileRoute("/search")({
 function SearchPage() {
   const { q } = Route.useSearch();
   const query = q?.trim() ?? "";
+  const [selectedVideo, setSelectedVideo] = useState<YouTubeResult | null>(null);
   const { data: genres } = useSuspenseQuery(genresQuery());
 
   const {
@@ -70,7 +71,36 @@ function SearchPage() {
   });
 
   const results = data?.results ?? [];
-
+const videoPlayer = selectedVideo ? (
+  <Section title={`Now playing: ${selectedVideo.title}`}>
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="aspect-video w-full">
+        <iframe
+          key={selectedVideo.videoId}
+          src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(selectedVideo.videoId)}?autoplay=1&playsinline=1`}
+          title={selectedVideo.title}
+          className="h-full w-full"
+          allow="autoplay; encrypted-media; picture-in-picture"
+          allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
+        />
+      </div>
+      <div className="p-4">
+        <h2 className="font-semibold">{selectedVideo.title}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {selectedVideo.artist}
+        </p>
+        <button
+          type="button"
+          onClick={() => setSelectedVideo(null)}
+          className="mt-3 text-sm text-muted-foreground underline"
+        >
+          Close player
+        </button>
+      </div>
+    </div>
+  </Section>
+) : null;
   return (
     <Page>
       <div className="mt-8">
