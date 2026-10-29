@@ -134,7 +134,7 @@ def allowed_audio_url(raw_url):
         return False
     configured = {
         domain.strip().lower().lstrip(".")
-        for domain in os.getenv("YTDLP_ALLOWED_DOMAINS", "").split(",")
+        for domain in os.getenv("YTDLP_ALLOWED_DOMAINS", "youtube.com,youtu.be").split(",")
         if domain.strip()
     }
     host = parsed.hostname.lower().rstrip(".")
@@ -174,7 +174,7 @@ def resolve_audio():
             "contentType": info.get("ext"),
         })
     except Exception:
-        app.logger.exception("Authorized audio resolution failed")
+        app.logger.exception("Audio resolution failed")
         return jsonify({"error": "Audio could not be resolved for this source."}), 502
 
 
