@@ -76,7 +76,7 @@ export function TrackList({ tracks, playlistId, showAlbum = true, meta, label }:
                 className="hidden size-8 items-center justify-center rounded-full text-foreground focus-visible:flex focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group-hover:flex group-focus-within:flex"
                 aria-label={
                   !track.playable
-                    ? `${track.title} — audio unavailable in demo`
+                    ? `${track.title} — audio unavailable`
                     : playingThis
                       ? `Pause ${track.title}`
                       : `Play ${track.title}`
