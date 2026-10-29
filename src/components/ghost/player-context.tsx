@@ -150,11 +150,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Load the current track whenever a new load is requested.
+  // Load the current track through YouTube's official player when it has a YouTube URL;
+  // otherwise use the configured audio source.
   useEffect(() => {
     const audio = audioRef.current;
     const track = currentRef.current;
     if (!audio) return;
+    const ytId = youtubeId(track);
     const clearStream = () => {
       hasStreamRef.current = false;
       audio.pause();
@@ -170,24 +172,32 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setCurrentTime(0);
     setDuration(track.durationSec);
     setStatus("loading");
+
+    if (ytId) {
+      clearStream();
+      hasStreamRef.current = true;
+      if (youtubePlayerRef.current && youtubeReady) {
+        if (autoplayRef.current) youtubePlayerRef.current.loadVideoById(ytId);
+        else youtubePlayerRef.current.cueVideoById(ytId);
+      }
+      return () => { cancelled = true; };
+    }
+
     activeSource.resolveStream(track).then((url) => {
       if (cancelled) return;
       if (!url) {
         clearStream();
         setStatus("unavailable");
         toast.error("Audio unavailable", {
-          description: "This video may not have a playable stream, or the backend may reject its source.",
+          description: "This track does not have a playable stream from the configured source.",
         });
         return;
       }
       hasStreamRef.current = true;
       audio.src = url;
       audio.load();
-      if (autoplayRef.current) {
-        audio.play().catch(() => setStatus("paused"));
-      } else {
-        setStatus("paused");
-      }
+      if (autoplayRef.current) audio.play().catch(() => setStatus("paused"));
+      else setStatus("paused");
     }).catch((error: unknown) => {
       if (cancelled) return;
       clearStream();
@@ -196,11 +206,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         description: error instanceof Error ? error.message : "Unknown audio resolver error.",
       });
     });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [loadId, youtubeReady]);
-
   const load = useCallback((autoplay: boolean) => {
     autoplayRef.current = autoplay;
     setLoadId((n) => n + 1);
