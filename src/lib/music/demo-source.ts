@@ -14,20 +14,35 @@ export const demoSource: MusicSource = {
   async search() { return { tracks: [], albums: [] }; },
   async getAlbum() { return null; },
   async resolveStream(track) {
-    if (!track.sourceUrl) return null;
+    if (!track.sourceUrl) {
+      throw new Error("This track has no source URL attached.");
+    }
+
+    let response: Response;
     try {
-      const response = await fetch(AUDIO_API, {
+      response = await fetch(AUDIO_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: track.sourceUrl }),
       });
-      if (!response.ok) return null;
-      const result = (await response.json()) as { url?: unknown };
-      return typeof result.url === "string" && result.url.startsWith("https://")
-        ? result.url
-        : null;
     } catch {
-      return null;
+      throw new Error("Could not reach the GHOST audio backend. Check whether the Render service is awake.");
     }
+
+    const result = (await response.json().catch(() => ({}))) as {
+      url?: unknown;
+      error?: unknown;
+    };
+
+    if (!response.ok) {
+      const message = typeof result.error === "string" ? result.error : `Audio backend returned HTTP ${response.status}.`;
+      throw new Error(message);
+    }
+
+    if (typeof result.url !== "string" || !result.url.startsWith("https://")) {
+      throw new Error("The backend responded but did not return a playable HTTPS audio URL.");
+    }
+
+    return result.url;
   },
 };
