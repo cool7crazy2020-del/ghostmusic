@@ -4,6 +4,9 @@ import { ExternalLink, Music2, SearchX } from "lucide-react";
 import { useState } from "react";
 
 import { EmptyState, Page, Section } from "@/components/ghost/page-parts";
+import { LikeButton } from "@/components/ghost/LikeButton";
+import { TrackActionsMenu } from "@/components/ghost/TrackActionsMenu";
+import type { Track } from "@/lib/music/types";
 
 type SearchParams = { q?: string };
 type ResultTab = "all" | "songs" | "artists" | "albums";
@@ -42,6 +45,11 @@ type SearchResponse = {
 };
 
 const SEARCH_API = "https://ghostmusic-s8vd.onrender.com/api/search";
+function toLibraryTrack(song: SongResult): Track {
+  const duration = song.duration?.split(":").reduce((total, part) => total * 60 + Number(part), 0) ?? 0;
+  return { id: `yt-${song.videoId}`, title: song.title, artist: song.artist, albumId: song.videoId, albumTitle: song.album ?? "Unknown album", durationSec: Number.isFinite(duration) ? duration : 0, art: 0, genre: "unknown", playable: false, sourceId: "youtube-music-link" };
+}
+
 const tabs: { id: ResultTab; label: string }[] = [
   { id: "all", label: "All" },
   { id: "songs", label: "Songs" },
@@ -204,6 +212,8 @@ function SearchPage() {
                         </p>
                       </div>
                       <span className="hidden text-xs text-muted-foreground sm:block">{song.duration ?? ""}</span>
+                      <LikeButton track={toLibraryTrack(song)} className="shrink-0 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 sm:data-[active=true]:opacity-100" />
+                      <TrackActionsMenu track={toLibraryTrack(song)} />
                       <a href={`https://music.youtube.com/watch?v=${encodeURIComponent(song.videoId)}`} target="_blank" rel="noopener noreferrer" aria-label={`Open ${song.title} on YouTube Music`} className="rounded-full p-2 text-muted-foreground opacity-70 transition hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"><ExternalLink size={16} /></a>
                     </div>
                   );
