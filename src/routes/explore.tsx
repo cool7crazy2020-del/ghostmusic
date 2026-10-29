@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Play } from "lucide-react";
 
@@ -16,10 +16,8 @@ export const Route = createFileRoute("/explore")({
     genre: typeof search.genre === "string" ? search.genre : undefined,
   }),
   loaderDeps: ({ search }) => ({ genre: search.genre }),
-  loader: async ({ context, deps }) => {
-    const genres = await context.queryClient.ensureQueryData(genresQuery());
-    const id = deps.genre && genres.some((g) => g.id === deps.genre) ? deps.genre : genres[0].id;
-    await context.queryClient.ensureQueryData(genreQuery(id));
+  beforeLoad: () => {
+    throw redirect({ to: "/search" });
   },
   head: () => ({
     meta: [
