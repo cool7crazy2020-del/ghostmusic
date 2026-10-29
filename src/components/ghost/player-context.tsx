@@ -43,14 +43,26 @@ interface PlayerContextValue {
   removeFromQueue: (i: number) => void;
   jumpTo: (i: number) => void;
   clearUpNext: () => void;
+  attachYouTubePlayer: (player: YouTubePlayerLike | null) => void;
 }
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
 const VOLUME_KEY = "ghost-music:volume";
+type YouTubePlayerLike = {
+  playVideo: () => void; pauseVideo: () => void; loadVideoById: (id: string) => void;
+  cueVideoById: (id: string) => void; seekTo: (seconds: number, allowSeekAhead: boolean) => void;
+  setVolume: (volume: number) => void; mute: () => void; unMute: () => void;
+  getCurrentTime: () => number; getDuration: () => number; getPlayerState: () => number;
+};
+function youtubeId(track: Track | null): string | null {
+  if (!track?.sourceUrl || !/youtube\.com|youtu\.be/.test(track.sourceUrl)) return null;
+  try { const u = new URL(track.sourceUrl); return u.searchParams.get("v") || u.pathname.split("/").filter(Boolean).pop() || null; }
+  catch { return null; }
+}
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const { recordPlay } = useLibrary();
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);\n  const youtubePlayerRef = useRef<YouTubePlayerLike | null>(null);\n  const [youtubeReady, setYoutubeReady] = useState(false);
   const [queue, setQueue] = useState<Track[]>([]);
   const [index, setIndex] = useState(-1);
   const [loadId, setLoadId] = useState(0);
@@ -64,7 +76,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const autoplayRef = useRef(false);
   const recordedLoadRef = useRef(-1);
   const hasStreamRef = useRef(false);
-  const current = queue[index] ?? null;
+  const current = queue[index] ?? null;\n  const currentYoutubeId = youtubeId(current);
   const currentRef = useRef<Track | null>(null);
   currentRef.current = current;
   const loadIdRef = useRef(0);
@@ -184,7 +196,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [loadId]);
+  }, [loadId, youtubeReady]);
 
   const load = useCallback((autoplay: boolean) => {
     autoplayRef.current = autoplay;
@@ -246,7 +258,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const audio = audioRef.current;
     const action = previousAction(index, audio?.currentTime ?? 0);
     if (action.kind === "restart") {
-      if (audio && hasStreamRef.current) audio.currentTime = 0;
+      if (youtubeId(currentRef.current)) youtubePlayerRef.current?.seekTo(0, true);\n      else if (audio && hasStreamRef.current) audio.currentTime = 0;
       return;
     }
     setIndex(action.index);
@@ -277,7 +289,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const toggleMute = useCallback(() => {
     setMuted((m) => {
-      if (audioRef.current) audioRef.current.muted = !m;
+      if (youtubeId(currentRef.current)) { if (m) youtubePlayerRef.current?.unMute(); else youtubePlayerRef.current?.mute(); }\n      if (audioRef.current) audioRef.current.muted = !m;
       return !m;
     });
   }, []);
@@ -328,6 +340,29 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   );
 
   const clearUpNext = useCallback(() => setQueue((q) => q.slice(0, index + 1)), [index]);
+
+  const attachYouTubePlayer = useCallback((player: YouTubePlayerLike | null) => {
+    youtubePlayerRef.current = player;
+    setYoutubeReady(!!player);
+    if (player) { player.setVolume(Math.round(volume * 100)); if (muted) player.mute(); }
+  }, [volume, muted]);
+
+  useEffect(() => {
+    if (!youtubeReady || !currentYoutubeId || !youtubePlayerRef.current) return;
+    const player = youtubePlayerRef.current;
+    const timer = window.setInterval(() => {
+      try {
+        const t = player.getCurrentTime(); const d = player.getDuration();
+        if (Number.isFinite(t)) setCurrentTime(t);
+        if (Number.isFinite(d) && d > 0) setDuration(d);
+        const state = player.getPlayerState();
+        if (state === 1) setStatus("playing");
+        else if (state === 2 || state === 5) setStatus("paused");
+        else if (state === 0) nextRef.current();
+      } catch { /* player may still be initializing */ }
+    }, 500);
+    return () => window.clearInterval(timer);
+  }, [youtubeReady, currentYoutubeId]);
 
   // Space bar toggles playback when focus isn't in a text field or on a control.
   useEffect(() => {
