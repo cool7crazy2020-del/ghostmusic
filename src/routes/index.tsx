@@ -1,6 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ExternalLink, Headphones, Music2, Search } from "lucide-react";
+import { LikeButton } from "@/components/ghost/LikeButton";
+import { TrackActionsMenu } from "@/components/ghost/TrackActionsMenu";
+import type { Track } from "@/lib/music/types";
 
 import { Page, Section } from "@/components/ghost/page-parts";
 
@@ -36,6 +39,11 @@ type SearchResponse = {
 
 const SEARCH_API = "https://ghostmusic-s8vd.onrender.com/api/search";
 
+function toLibraryTrack(track: TrackResult): Track {
+  const duration = track.duration?.split(":").reduce((total, part) => total * 60 + Number(part), 0) ?? 0;
+  return { id: `yt-${track.videoId}`, title: track.title, artist: track.artist, albumId: track.videoId, albumTitle: track.album ?? "Unknown album", durationSec: Number.isFinite(duration) ? duration : 0, art: 0, genre: "unknown", playable: false, sourceId: "youtube-music-link" };
+}
+
 async function searchMusic(query: string): Promise<SearchResponse> {
   const response = await fetch(`${SEARCH_API}?q=${encodeURIComponent(query)}`);
   if (!response.ok) throw new Error("Music discovery is temporarily unavailable.");
@@ -63,6 +71,8 @@ function MusicRows({ tracks }: { tracks: TrackResult[] }) {
             <span className="mt-1 block truncate text-xs text-muted-foreground">{track.artist}{track.album ? ` · ${track.album}` : ""}</span>
           </span>
           <span className="hidden text-xs text-muted-foreground sm:block">{track.duration ?? ""}</span>
+          <LikeButton track={toLibraryTrack(track)} className="shrink-0 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 sm:data-[active=true]:opacity-100" />
+          <TrackActionsMenu track={toLibraryTrack(track)} />
           <ExternalLink size={16} className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
         </a>
       ))}
@@ -127,9 +137,7 @@ function Home() {
             <Link to="/search" className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-glow-sm transition-transform hover:scale-[1.02]">
               <Search size={17} /> Explore music <ArrowRight size={16} />
             </Link>
-            <Link to="/explore" className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-5 py-3 text-sm font-semibold transition-colors hover:bg-accent">
-              Browse genres
-            </Link>
+            
           </div>
         </div>
       </section>
