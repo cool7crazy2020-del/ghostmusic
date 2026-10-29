@@ -25,6 +25,8 @@ export interface Track {
   playable: boolean;
   /** Which source this track came from (used to label it in the UI). */
   sourceId: string;
+  /** Optional canonical page URL used by a provider adapter to resolve playback. */
+  sourceUrl?: string;
 }
 
 export interface Album {
