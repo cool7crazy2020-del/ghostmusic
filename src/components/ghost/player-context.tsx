@@ -460,11 +460,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       removeFromQueue,
       jumpTo,
       clearUpNext,
+      attachYouTubePlayer,
     }),
     [
       queue, index, current, status, currentTime, duration, volume, muted, queueOpen,
       playTrack, playTracks, togglePlay, next, previous, seek, setVolume, toggleMute,
-      addToQueue, playNext, removeFromQueue, jumpTo, clearUpNext,
+      addToQueue, playNext, removeFromQueue, jumpTo, clearUpNext, attachYouTubePlayer,
     ],
   );
 
