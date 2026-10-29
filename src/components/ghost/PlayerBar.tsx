@@ -72,6 +72,8 @@ export function PlayerBar() {
         : null;
 
   return (
+    <>
+    <YouTubeBridge videoId={youtubeVideoId} onReady={onYouTubeReady} />
     <footer
       aria-label="Player"
       className="relative z-40 border-t border-border bg-surface/95 backdrop-blur-xl"
@@ -233,5 +235,6 @@ export function PlayerBar() {
         </div>
       </div>
     </footer>
+    </>
   );
 }
