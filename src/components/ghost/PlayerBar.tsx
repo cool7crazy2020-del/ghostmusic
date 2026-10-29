@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ListMusic, Loader2, Pause, Play, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -46,8 +46,7 @@ export function PlayerBar() {
   const p = usePlayer();
   const attachYouTubePlayer = p.attachYouTubePlayer;
   const youtubeVideoId = p.current?.sourceUrl ? (() => { try { const u = new URL(p.current.sourceUrl!); return u.searchParams.get("v") || (u.hostname.includes("youtu.be") ? u.pathname.slice(1) : null); } catch { return null; } })() : null;
-  const onYouTubeReady = useRef((player: YTPlayer | null) => attachYouTubePlayer(player));
-  onYouTubeReady.current = (player) => attachYouTubePlayer(player);
+  const onYouTubeReady = useCallback((player: YTPlayer | null) => attachYouTubePlayer(player), [attachYouTubePlayer]);
   const [scrub, setScrub] = useState<number | null>(null);
   const track = p.current;
   const unavailable = p.status === "unavailable";
