@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ListMusic, Loader2, Pause, Play, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -11,8 +11,43 @@ import { Artwork } from "./Artwork";
 import { LikeButton } from "./LikeButton";
 import { usePlayer } from "./player-context";
 
+type YTPlayer = { playVideo: () => void; pauseVideo: () => void; loadVideoById: (id: string) => void; cueVideoById: (id: string) => void; seekTo: (seconds: number, allowSeekAhead: boolean) => void; setVolume: (volume: number) => void; mute: () => void; unMute: () => void; getCurrentTime: () => number; getDuration: () => number; getPlayerState: () => number; destroy: () => void };
+declare global { interface Window { YT?: { Player: new (element: HTMLElement, options: Record<string, unknown>) => YTPlayer; PlayerState: { ENDED: number }; }; onYouTubeIframeAPIReady?: () => void; } }
+
+function YouTubeBridge({ videoId, onReady }: { videoId: string | null; onReady: (player: YTPlayer | null) => void }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<YTPlayer | null>(null);
+  useEffect(() => {
+    if (!videoId || !hostRef.current) { onReady(null); return; }
+    let cancelled = false;
+    const create = () => {
+      if (cancelled || !hostRef.current || !window.YT?.Player) return;
+      playerRef.current?.destroy();
+      playerRef.current = new window.YT.Player(hostRef.current, {
+        width: 200, height: 200, videoId,
+        playerVars: { playsinline: 1, origin: window.location.origin, rel: 0 },
+        events: { onReady: (event: { target: YTPlayer }) => { if (!cancelled) onReady(event.target); }, onStateChange: () => {} },
+      });
+    };
+    if (window.YT?.Player) create();
+    else {
+      const existing = document.querySelector<HTMLScriptElement>('script[src="https://www.youtube.com/iframe_api"]');
+      if (!existing) { const script = document.createElement("script"); script.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(script); }
+      const previous = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => { previous?.(); create(); };
+    }
+    return () => { cancelled = true; playerRef.current?.destroy(); playerRef.current = null; };
+  }, [videoId, onReady]);
+  if (!videoId) return null;
+  return <div className="fixed bottom-[6.5rem] right-4 z-50 overflow-hidden rounded-xl border border-border bg-black shadow-2xl"><div className="px-3 py-1.5 text-[11px] font-medium text-white/80">YouTube player · GHOST</div><div ref={hostRef} className="h-[200px] w-[200px]" /></div>;
+}
+
 export function PlayerBar() {
   const p = usePlayer();
+  const attachYouTubePlayer = p.attachYouTubePlayer;
+  const youtubeVideoId = p.current?.sourceUrl ? (() => { try { const u = new URL(p.current.sourceUrl!); return u.searchParams.get("v") || (u.hostname.includes("youtu.be") ? u.pathname.slice(1) : null); } catch { return null; } })() : null;
+  const onYouTubeReady = useRef((player: YTPlayer | null) => attachYouTubePlayer(player));
+  onYouTubeReady.current = (player) => attachYouTubePlayer(player);
   const [scrub, setScrub] = useState<number | null>(null);
   const track = p.current;
   const unavailable = p.status === "unavailable";
