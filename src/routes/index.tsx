@@ -1,6 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ExternalLink, Headphones, Music2, Search } from "lucide-react";
+import type { Track } from "@/lib/music/types";
+import { LikeButton } from "@/components/ghost/LikeButton";
+import { TrackActionsMenu } from "@/components/ghost/TrackActionsMenu";
 import { LikeButton } from "@/components/ghost/LikeButton";
 import { TrackActionsMenu } from "@/components/ghost/TrackActionsMenu";
 import type { Track } from "@/lib/music/types";
@@ -48,6 +51,21 @@ async function searchMusic(query: string): Promise<SearchResponse> {
   const response = await fetch(`${SEARCH_API}?q=${encodeURIComponent(query)}`);
   if (!response.ok) throw new Error("Music discovery is temporarily unavailable.");
   return (await response.json()) as SearchResponse;
+}
+
+function toLibraryTrack(track: TrackResult): Track {
+  return {
+    id: `yt-${track.videoId}`,
+    title: track.title,
+    artist: track.artist,
+    albumId: track.videoId,
+    albumTitle: track.album ?? "Single",
+    durationSec: 0,
+    art: 0,
+    genre: "external",
+    playable: false,
+    sourceId: "youtube-music-link",
+  };
 }
 
 function MusicRows({ tracks }: { tracks: TrackResult[] }) {
