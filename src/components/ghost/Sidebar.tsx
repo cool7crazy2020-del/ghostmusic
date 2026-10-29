@@ -3,12 +3,10 @@ import { Compass, Ghost, Heart, History, Home, Library, ListMusic, Plus, Search 
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { activeSource } from "@/lib/music/source";
 import { cn } from "@/lib/utils";
 
 import { CreatePlaylistDialog } from "./CreatePlaylistDialog";
 import { useLibrary } from "./library-context";
-import { SourceInfoDialog } from "./SourceInfoDialog";
 
 const NAV = [
   { to: "/", label: "Home", icon: Home, exact: true },
@@ -87,21 +85,6 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             </Link>
           ))}
         </div>
-      </div>
-
-      <div className="mx-3 rounded-xl border border-border bg-surface p-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-primary">Demo mode</p>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Playing the {activeSource.name.replace("GHOST ", "").toLowerCase()}. Full catalog playback needs a
-          supported music provider.
-        </p>
-        <SourceInfoDialog
-          trigger={
-            <Button variant="link" size="sm" className="mt-1 h-auto px-0 text-xs">
-              How playback works
-            </Button>
-          }
-        />
       </div>
 
       <CreatePlaylistDialog open={dialogOpen} onOpenChange={setDialogOpen} />
