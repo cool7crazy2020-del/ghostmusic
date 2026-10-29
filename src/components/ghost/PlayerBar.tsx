@@ -32,7 +32,7 @@ export function PlayerBar() {
   const statusText = !track
     ? "Pick a track to start listening"
     : unavailable
-      ? "Unavailable in demo — no audio for this track"
+      ? "Audio unavailable for this track"
       : p.status === "error"
         ? "Couldn't load audio"
         : null;
@@ -67,7 +67,7 @@ export function PlayerBar() {
                 <div className="truncate text-xs text-muted-foreground">{track.artist}</div>
                 {unavailable && (
                   <div className="mt-0.5 truncate text-[11px] font-medium text-warning md:hidden">
-                    Unavailable in demo
+                    Audio unavailable
                   </div>
                 )}
               </div>
