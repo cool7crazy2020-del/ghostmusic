@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Compass, Ghost, Heart, History, Home, Library, ListMusic, Plus, Search } from "lucide-react";
+import { Ghost, Heart, History, Home, Library, ListMusic, Plus, Search } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,6 @@ import { useLibrary } from "./library-context";
 const NAV = [
   { to: "/", label: "Home", icon: Home, exact: true },
   { to: "/search", label: "Search", icon: Search },
-  { to: "/explore", label: "Explore", icon: Compass },
   { to: "/library", label: "Library", icon: Library },
   { to: "/playlists", label: "Playlists", icon: ListMusic },
   { to: "/liked", label: "Liked Songs", icon: Heart },
