@@ -1,18 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Music2, SearchX } from "lucide-react";
+import { useState } from "react";
 
-import { Artwork } from "@/components/ghost/Artwork";
 import { EmptyState, Page, Section } from "@/components/ghost/page-parts";
-import { genresQuery } from "@/lib/music/source";
 
 type SearchParams = { q?: string };
+type ResultTab = "all" | "songs" | "artists" | "albums";
 
 type ArtistResult = {
   id: string;
   name: string;
   thumbnail: string | null;
   subscribers?: string | null;
+};
+
+type AlbumResult = {
+  id: string;
+  title: string;
+  artist: string;
+  thumbnail: string | null;
+  year?: string | number | null;
+  type?: string | null;
 };
 
 type SongResult = {
@@ -28,52 +37,47 @@ type SongResult = {
 type SearchResponse = {
   results?: SongResult[];
   artists?: ArtistResult[];
+  albums?: AlbumResult[];
   error?: string;
 };
 
 const SEARCH_API = "https://ghostmusic-s8vd.onrender.com/api/search";
+const tabs: { id: ResultTab; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "songs", label: "Songs" },
+  { id: "artists", label: "Artists" },
+  { id: "albums", label: "Albums" },
+];
 
 export const Route = createFileRoute("/search")({
   validateSearch: (search: Record<string, unknown>): SearchParams => ({
-    q:
-      typeof search.q === "string" && search.q.trim()
-        ? search.q
-        : undefined,
+    q: typeof search.q === "string" && search.q.trim() ? search.q : undefined,
   }),
   head: () => ({
     meta: [
       { title: "Search — GHOST Music" },
-      {
-        name: "description",
-        content: "Discover songs and artists on GHOST Music.",
-      },
+      { name: "description", content: "Discover songs, artists, and albums on GHOST Music." },
     ],
   }),
-  loader: ({ context }) =>
-    context.queryClient.ensureQueryData(genresQuery()),
   component: SearchPage,
 });
 
 function SearchPage() {
   const { q } = Route.useSearch();
   const query = q?.trim() ?? "";
-  const { data: genres } = useSuspenseQuery(genresQuery());
+  const [activeTab, setActiveTab] = useState<ResultTab>("all");
 
   const { data, isFetching, isError } = useQuery({
     queryKey: ["ghost-search", query],
     queryFn: async (): Promise<SearchResponse> => {
-      const response = await fetch(
-        `${SEARCH_API}?q=${encodeURIComponent(query)}`,
-      );
+      const response = await fetch(`${SEARCH_API}?q=${encodeURIComponent(query)}`);
       let result: SearchResponse;
       try {
         result = (await response.json()) as SearchResponse;
       } catch {
         throw new Error("The search service returned an invalid response.");
       }
-      if (!response.ok) {
-        throw new Error(result.error ?? "Music search failed.");
-      }
+      if (!response.ok) throw new Error(result.error ?? "Music search failed.");
       return result;
     },
     enabled: query.length > 0,
@@ -83,40 +87,44 @@ function SearchPage() {
 
   const songs = data?.results ?? [];
   const artists = data?.artists ?? [];
+  const albums = data?.albums ?? [];
 
   return (
     <Page>
-      <div className="mt-8">
-        <h1 className="text-3xl font-extrabold sm:text-4xl">
-          {query ? `Search results for “${query}”` : "Search"}
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Find songs, artists, and your next obsession.
-        </p>
+      <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold sm:text-4xl">
+            {query ? `Search results for “${query}”` : "Search"}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Find songs, artists, albums, and your next obsession.
+          </p>
+        </div>
+        {query && (
+          <div className="flex flex-wrap justify-end gap-2" role="tablist" aria-label="Search result type">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${activeTab === tab.id ? "bg-primary text-primary-foreground shadow-glow-sm" : "bg-surface-raised text-muted-foreground hover:bg-accent hover:text-foreground"}`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {!query ? (
-        <Section title="Browse by genre">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-            {genres.map((genre) => (
-              <Link
-                key={genre.id}
-                to="/explore"
-                search={{ genre: genre.id }}
-                className="group relative aspect-[4/3] overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <Artwork
-                  art={genre.art}
-                  size="lg"
-                  className="absolute inset-0 h-full w-full rounded-none transition-transform duration-500 group-hover:scale-110"
-                />
-                <span className="absolute inset-x-0 bottom-0 p-3 font-display text-lg font-bold text-foreground">
-                  {genre.name}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </Section>
+        <div className="mt-10 rounded-2xl border border-border bg-surface p-8">
+          <h2 className="text-xl font-bold">What are you in the mood for?</h2>
+          <p className="mt-2 max-w-lg text-sm text-muted-foreground">
+            Search for a song, artist, or album to explore the music you love.
+          </p>
+        </div>
       ) : isFetching ? (
         <p className="mt-8 text-sm text-muted-foreground">Searching…</p>
       ) : isError ? (
@@ -127,7 +135,7 @@ function SearchPage() {
         </div>
       ) : (
         <>
-          {artists.length > 0 && (
+          {(activeTab === "all" || activeTab === "artists") && artists.length > 0 && (
             <Section title="Artists">
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                 {artists.map((artist) => (
@@ -138,88 +146,65 @@ function SearchPage() {
                     className="group min-w-0 rounded-xl p-3 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {artist.thumbnail ? (
-                      <img
-                        src={artist.thumbnail}
-                        alt=""
-                        loading="lazy"
-                        className="mx-auto aspect-square w-full max-w-40 rounded-full object-cover shadow-lg transition-transform group-hover:scale-[1.03]"
-                      />
+                      <img src={artist.thumbnail} alt="" loading="lazy" className="mx-auto aspect-square w-full max-w-40 rounded-full object-cover shadow-lg transition-transform group-hover:scale-[1.03]" />
                     ) : (
-                      <div className="mx-auto flex aspect-square w-full max-w-40 items-center justify-center rounded-full bg-muted">
-                        <Music2 size={36} />
-                      </div>
+                      <div className="mx-auto flex aspect-square w-full max-w-40 items-center justify-center rounded-full bg-muted"><Music2 size={36} /></div>
                     )}
-                    <h2 className="mt-3 truncate text-center font-semibold">
-                      {artist.name}
-                    </h2>
-                    <p className="mt-1 text-center text-xs text-muted-foreground">
-                      Artist
-                    </p>
+                    <h2 className="mt-3 truncate text-center font-semibold">{artist.name}</h2>
+                    <p className="mt-1 text-center text-xs text-muted-foreground">Artist</p>
                   </Link>
                 ))}
               </div>
             </Section>
           )}
 
-          {songs.length > 0 && (
+          {(activeTab === "all" || activeTab === "albums") && albums.length > 0 && (
+            <Section title="Albums">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {albums.map((album) => (
+                  <a
+                    key={album.id}
+                    href={`https://music.youtube.com/browse/${encodeURIComponent(album.id)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group min-w-0 rounded-xl p-3 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {album.thumbnail ? (
+                      <img src={album.thumbnail} alt="" loading="lazy" className="aspect-square w-full rounded-lg object-cover shadow-md transition-transform group-hover:scale-[1.02]" />
+                    ) : (
+                      <div className="flex aspect-square w-full items-center justify-center rounded-lg bg-muted"><Music2 size={32} /></div>
+                    )}
+                    <h2 className="mt-3 truncate text-sm font-semibold">{album.title}</h2>
+                    <p className="mt-1 truncate text-xs text-muted-foreground">{album.artist}{album.year ? ` · ${album.year}` : ""}</p>
+                  </a>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {(activeTab === "all" || activeTab === "songs") && songs.length > 0 && (
             <Section title="Songs">
               <div className="divide-y divide-border/70">
                 {songs.map((song, index) => {
                   const primaryArtist = song.artists?.[0];
-                  const artistHref = primaryArtist?.id;
                   return (
-                    <div
-                      key={song.videoId || `${song.title}-${index}`}
-                      className="group flex items-center gap-4 rounded-lg px-3 py-2 transition-colors hover:bg-accent"
-                    >
+                    <div key={song.videoId || `${song.title}-${index}`} className="group flex items-center gap-4 rounded-lg px-3 py-2 transition-colors hover:bg-accent">
                       {song.thumbnail ? (
-                        <img
-                          src={song.thumbnail}
-                          alt=""
-                          loading="lazy"
-                          className="h-12 w-12 shrink-0 rounded-md object-cover"
-                        />
+                        <img src={song.thumbnail} alt="" loading="lazy" className="h-12 w-12 shrink-0 rounded-md object-cover" />
                       ) : (
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted">
-                          <Music2 size={18} />
-                        </div>
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted"><Music2 size={18} /></div>
                       )}
                       <div className="min-w-0 flex-1">
-                        <a
-                          href={`https://music.youtube.com/watch?v=${encodeURIComponent(song.videoId)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block truncate text-sm font-medium hover:text-primary"
-                        >
-                          {song.title}
-                        </a>
+                        <a href={`https://music.youtube.com/watch?v=${encodeURIComponent(song.videoId)}`} target="_blank" rel="noopener noreferrer" className="block truncate text-sm font-medium hover:text-primary">{song.title}</a>
                         <p className="mt-1 truncate text-xs text-muted-foreground">
-                          {artistHref ? (
-                            <Link
-                              to="/artist/$artistId"
-                              params={{ artistId: primaryArtist!.id! }}
-                              className="hover:text-foreground hover:underline"
-                            >
-                              {primaryArtist!.name}
-                            </Link>
-                          ) : (
-                            song.artist
-                          )}
+                          {primaryArtist?.id ? (
+                            <Link to="/artist/$artistId" params={{ artistId: primaryArtist.id }} className="hover:text-foreground hover:underline">{primaryArtist.name}</Link>
+                          ) : song.artist}
                           {song.album ? ` · ${song.album}` : ""}
                         </p>
                       </div>
-                      <span className="hidden text-xs text-muted-foreground sm:block">
-                        {song.duration ?? ""}
-                      </span>
-                      <a
-                        href={`https://music.youtube.com/watch?v=${encodeURIComponent(song.videoId)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={`Open ${song.title} on YouTube Music`}
-                        className="rounded-full p-2 text-muted-foreground opacity-70 transition hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"
-                      >
-                        <ExternalLink size={16} />
-                      </a>
+                      <span className="hidden text-xs text-muted-foreground sm:block">{song.duration ?? ""}</span>
+                      <a href={`https://music.youtube.com/watch?v=${encodeURIComponent(song.videoId)}`} target="_blank" rel="noopener noreferrer" aria-label={`Open ${song.title} on YouTube Music`} className="rounded-full p-2 text-muted-foreground opacity-70 transition hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"><ExternalLink size={16} /></a>
                     </div>
                   );
                 })}
@@ -227,13 +212,13 @@ function SearchPage() {
             </Section>
           )}
 
-          {artists.length === 0 && songs.length === 0 && (
+          {((activeTab === "songs" && songs.length === 0) ||
+            (activeTab === "artists" && artists.length === 0) ||
+            (activeTab === "albums" && albums.length === 0) ||
+            (activeTab === "all" && songs.length === 0 && artists.length === 0 && albums.length === 0)) && (
             <div className="mt-10">
-              <EmptyState
-                icon={<SearchX />}
-                title={`No results for “${query}”`}
-              >
-                Try searching for another song or artist.
+              <EmptyState icon={<SearchX />} title={`No ${activeTab === "all" ? "results" : activeTab} for “${query}”`}>
+                Try another search or choose a different category.
               </EmptyState>
             </div>
           )}
