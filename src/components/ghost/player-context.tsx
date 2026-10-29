@@ -62,7 +62,9 @@ function youtubeId(track: Track | null): string | null {
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const { recordPlay } = useLibrary();
-  const audioRef = useRef<HTMLAudioElement | null>(null);\n  const youtubePlayerRef = useRef<YouTubePlayerLike | null>(null);\n  const [youtubeReady, setYoutubeReady] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const youtubePlayerRef = useRef<YouTubePlayerLike | null>(null);
+  const [youtubeReady, setYoutubeReady] = useState(false);
   const [queue, setQueue] = useState<Track[]>([]);
   const [index, setIndex] = useState(-1);
   const [loadId, setLoadId] = useState(0);
@@ -76,7 +78,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const autoplayRef = useRef(false);
   const recordedLoadRef = useRef(-1);
   const hasStreamRef = useRef(false);
-  const current = queue[index] ?? null;\n  const currentYoutubeId = youtubeId(current);
+  const current = queue[index] ?? null;
+  const currentYoutubeId = youtubeId(current);
   const currentRef = useRef<Track | null>(null);
   currentRef.current = current;
   const loadIdRef = useRef(0);
@@ -258,7 +261,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const audio = audioRef.current;
     const action = previousAction(index, audio?.currentTime ?? 0);
     if (action.kind === "restart") {
-      if (youtubeId(currentRef.current)) youtubePlayerRef.current?.seekTo(0, true);\n      else if (audio && hasStreamRef.current) audio.currentTime = 0;
+      if (youtubeId(currentRef.current)) youtubePlayerRef.current?.seekTo(0, true);
+      else if (audio && hasStreamRef.current) audio.currentTime = 0;
       return;
     }
     setIndex(action.index);
@@ -289,7 +293,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const toggleMute = useCallback(() => {
     setMuted((m) => {
-      if (youtubeId(currentRef.current)) { if (m) youtubePlayerRef.current?.unMute(); else youtubePlayerRef.current?.mute(); }\n      if (audioRef.current) audioRef.current.muted = !m;
+      if (youtubeId(currentRef.current)) { if (m) youtubePlayerRef.current?.unMute(); else youtubePlayerRef.current?.mute(); }
+      if (audioRef.current) audioRef.current.muted = !m;
       return !m;
     });
   }, []);
