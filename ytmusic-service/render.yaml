@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: ghostmusic-search
+    runtime: python
+    rootDir: ytmusic-service
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
