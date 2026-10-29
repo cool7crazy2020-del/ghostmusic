@@ -10,9 +10,9 @@ export function AvailabilityBadge({ playable, className }: { playable: boolean; 
           : "border-border text-muted-foreground",
         className,
       )}
-      title={playable ? "Demo audio available" : "No audio in the demo catalog"}
+      title={playable ? "Audio available" : "Audio unavailable"}
     >
-      {playable ? "Demo" : "No audio"}
+      {playable ? "Available" : "Unavailable"}
     </span>
   );
 }
