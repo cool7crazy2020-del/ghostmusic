@@ -123,6 +123,61 @@ def artist_profile(artist_id):
         return jsonify({"error": "Artist profile unavailable"}), 502
 
 
+def allowed_audio_url(raw_url):
+    """Allow only HTTPS URLs on explicitly configured audio-source domains."""
+    from urllib.parse import urlparse
+
+    if not raw_url or len(raw_url) > 2048:
+        return False
+    parsed = urlparse(raw_url)
+    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+        return False
+    configured = {
+        domain.strip().lower().lstrip(".")
+        for domain in os.getenv("YTDLP_ALLOWED_DOMAINS", "").split(",")
+        if domain.strip()
+    }
+    host = parsed.hostname.lower().rstrip(".")
+    return bool(configured) and any(host == domain or host.endswith("." + domain) for domain in configured)
+
+
+@app.post("/api/resolve-audio")
+def resolve_audio():
+    """Resolve audio from an explicitly allowlisted source the operator may stream."""
+    from yt_dlp import YoutubeDL
+
+    payload = request.get_json(silent=True) or {}
+    source_url = payload.get("url", "")
+    if not isinstance(source_url, str) or not allowed_audio_url(source_url):
+        return jsonify({
+            "error": "This audio source is not enabled. Configure YTDLP_ALLOWED_DOMAINS for a source you are authorized to stream."
+        }), 400
+
+    options = {
+        "format": "bestaudio/best",
+        "noplaylist": True,
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "extract_flat": False,
+        "socket_timeout": 12,
+    }
+    try:
+        with YoutubeDL(options) as ydl:
+            info = ydl.extract_info(source_url, download=False)
+        if not info or not info.get("url"):
+            return jsonify({"error": "No playable audio was found for this source."}), 404
+        return jsonify({
+            "url": info["url"],
+            "title": info.get("title") or "Unknown title",
+            "duration": info.get("duration"),
+            "contentType": info.get("ext"),
+        })
+    except Exception:
+        app.logger.exception("Authorized audio resolution failed")
+        return jsonify({"error": "Audio could not be resolved for this source."}), 502
+
+
 @app.get("/")
 def health():
     return jsonify({"status": "GHOST Music search service is running"})
