@@ -227,6 +227,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const audio = audioRef.current;
     const track = currentRef.current;
     if (!audio || !track) return;
+    if (youtubeId(track)) {
+      const player = youtubePlayerRef.current;
+      if (!player || !youtubeReady) {
+        setStatus("loading");
+        return;
+      }
+      try {
+        const state = player.getPlayerState();
+        if (state === 1) player.pauseVideo();
+        else player.playVideo();
+      } catch {
+        setStatus("error");
+        toast.error("YouTube playback failed", { description: "Try selecting the track again." });
+      }
+      return;
+    }
     if (!hasStreamRef.current) {
       toast("Playback unavailable", {
         description: `“${track.title}” has no audio in the demo catalog. Connect a supported music source for full playback.`,
@@ -235,7 +251,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
     if (audio.paused) audio.play().catch(() => setStatus("paused"));
     else audio.pause();
-  }, []);
+  }, [youtubeReady]);
 
   const playTrack = useCallback(
     (track: Track, context?: Track[]) => {
@@ -278,6 +294,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const seek = useCallback((seconds: number) => {
     const audio = audioRef.current;
+    if (youtubeId(currentRef.current)) {
+      youtubePlayerRef.current?.seekTo(seconds, true);
+      setCurrentTime(seconds);
+      return;
+    }
     if (!audio || !hasStreamRef.current) return;
     audio.currentTime = seconds;
     setCurrentTime(seconds);
@@ -290,6 +311,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (audioRef.current) {
       audioRef.current.volume = clamped;
       audioRef.current.muted = clamped === 0;
+    }
+    const yt = youtubePlayerRef.current;
+    if (yt) {
+      yt.setVolume(Math.round(clamped * 100));
+      if (clamped === 0) yt.mute();
+      else yt.unMute();
     }
     try {
       window.localStorage.setItem(VOLUME_KEY, String(clamped));
