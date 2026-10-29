@@ -27,15 +27,28 @@ def clean_artist(item):
     }
 
 
+def clean_album(album):
+    artists = album.get("artists", []) or []
+    return {
+        "id": album.get("browseId") or album.get("id"),
+        "title": album.get("title", "Unknown album"),
+        "artist": ", ".join(a.get("name", "") for a in artists) or album.get("artist", "Unknown artist"),
+        "thumbnail": best_thumbnail(album),
+        "year": album.get("year"),
+        "type": album.get("type"),
+    }
+
+
 @app.get("/api/search")
 def search():
     query = request.args.get("q", "").strip()
     if not query:
-        return jsonify({"results": [], "artists": []})
+        return jsonify({"results": [], "artists": [], "albums": []})
 
     try:
         tracks = ytmusic.search(query, filter="songs", limit=20)
         artists = ytmusic.search(query, filter="artists", limit=8)
+        albums = ytmusic.search(query, filter="albums", limit=12)
 
         results = []
         for track in tracks:
@@ -59,7 +72,17 @@ def search():
             if clean["id"] and clean["name"] != "Unknown artist":
                 artist_results.append(clean)
 
-        return jsonify({"results": results, "artists": artist_results})
+        album_results = []
+        for album in albums:
+            clean = clean_album(album)
+            if clean["id"] and clean["title"] != "Unknown album":
+                album_results.append(clean)
+
+        return jsonify({
+            "results": results,
+            "artists": artist_results,
+            "albums": album_results,
+        })
     except Exception:
         app.logger.exception("Music search failed")
         return jsonify({"error": "Search failed"}), 502
