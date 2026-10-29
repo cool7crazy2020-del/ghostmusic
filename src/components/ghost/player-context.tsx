@@ -160,15 +160,26 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       if (!url) {
         clearStream();
         setStatus("unavailable");
+        toast.error("Audio unavailable", {
+          description: "This video may not have a playable stream, or the backend may reject its source.",
+        });
         return;
       }
       hasStreamRef.current = true;
       audio.src = url;
+      audio.load();
       if (autoplayRef.current) {
         audio.play().catch(() => setStatus("paused"));
       } else {
         setStatus("paused");
       }
+    }).catch(() => {
+      if (cancelled) return;
+      clearStream();
+      setStatus("error");
+      toast.error("Couldn't resolve this audio", {
+        description: "Check the backend deployment and the source's availability.",
+      });
     });
     return () => {
       cancelled = true;
