@@ -4,9 +4,6 @@ import { ArrowRight, ExternalLink, Headphones, Music2, Search } from "lucide-rea
 import type { Track } from "@/lib/music/types";
 import { LikeButton } from "@/components/ghost/LikeButton";
 import { TrackActionsMenu } from "@/components/ghost/TrackActionsMenu";
-import { LikeButton } from "@/components/ghost/LikeButton";
-import { TrackActionsMenu } from "@/components/ghost/TrackActionsMenu";
-import type { Track } from "@/lib/music/types";
 
 import { Page, Section } from "@/components/ghost/page-parts";
 
@@ -53,20 +50,6 @@ async function searchMusic(query: string): Promise<SearchResponse> {
   return (await response.json()) as SearchResponse;
 }
 
-function toLibraryTrack(track: TrackResult): Track {
-  return {
-    id: `yt-${track.videoId}`,
-    title: track.title,
-    artist: track.artist,
-    albumId: track.videoId,
-    albumTitle: track.album ?? "Single",
-    durationSec: 0,
-    art: 0,
-    genre: "external",
-    playable: false,
-    sourceId: "youtube-music-link",
-  };
-}
 
 function MusicRows({ tracks }: { tracks: TrackResult[] }) {
   return (
