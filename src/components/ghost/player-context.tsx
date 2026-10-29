@@ -344,8 +344,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const attachYouTubePlayer = useCallback((player: YouTubePlayerLike | null) => {
     youtubePlayerRef.current = player;
     setYoutubeReady(!!player);
-    if (player) { player.setVolume(Math.round(volume * 100)); if (muted) player.mute(); }
-  }, [volume, muted]);
+  }, []);
 
   useEffect(() => {
     if (!youtubeReady || !currentYoutubeId || !youtubePlayerRef.current) return;
