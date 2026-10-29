@@ -7,7 +7,6 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
 import { useLibrary } from "./library-context";
 import { SidebarContent } from "./Sidebar";
-import { SourceInfoDialog } from "./SourceInfoDialog";
 
 export function TopBar() {
   const navigate = useNavigate();
@@ -50,7 +49,7 @@ export function TopBar() {
             }}
           >
             <label htmlFor="ghost-search" className="sr-only">
-              Search the demo catalog
+              Search music
             </label>
             <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -77,16 +76,6 @@ export function TopBar() {
               </button>
             )}
           </form>
-          <div className="ml-auto hidden sm:block">
-            <SourceInfoDialog
-              trigger={
-                <button className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                  <span className="size-1.5 rounded-full bg-primary shadow-glow-sm" aria-hidden />
-                  Demo catalog
-                </button>
-              }
-            />
-          </div>
         </div>
         {!storageAvailable && (
           <div role="status" className="border-t border-warning/30 bg-warning/10 px-4 py-1.5 text-center text-xs text-warning">
