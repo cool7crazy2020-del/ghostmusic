@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query"; 
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { SearchX, ExternalLink } from "lucide-react";
 
 import { Artwork } from "@/components/ghost/Artwork";
@@ -13,12 +14,15 @@ type YouTubeResult = {
   title: string;
   artist: string;
   thumbnail: string | null;
+  duration?: string | null;
 };
 
 type YouTubeResponse = {
   results?: YouTubeResult[];
   error?: string;
 };
+
+const SEARCH_API = "https://ghostmusic-s8vd.onrender.com/api/search";
 
 export const Route = createFileRoute("/search")({
   validateSearch: (search: Record<string, unknown>): SearchParams => ({
@@ -32,7 +36,7 @@ export const Route = createFileRoute("/search")({
       { title: "Search — GHOST Music" },
       {
         name: "description",
-        content: "Discover music videos on GHOST Music.",
+        content: "Discover music on GHOST Music.",
       },
     ],
   }),
@@ -44,32 +48,75 @@ export const Route = createFileRoute("/search")({
 function SearchPage() {
   const { q } = Route.useSearch();
   const query = q?.trim() ?? "";
+  const [selectedVideo, setSelectedVideo] = useState<YouTubeResult | null>(
+    null,
+  );
+
   const { data: genres } = useSuspenseQuery(genresQuery());
 
-  const {
-    data,
-    isFetching,
-    isError,
-  } = useQuery({
-    queryKey: ["youtube-search", query],
+  const { data, isFetching, isError } = useQuery({
+    queryKey: ["youtube-music-search", query],
     queryFn: async (): Promise<YouTubeResponse> => {
       const response = await fetch(
-        `/api/search?q=${encodeURIComponent(query)}`,
+        `${SEARCH_API}?q=${encodeURIComponent(query)}`,
       );
 
-      const result = (await response.json()) as YouTubeResponse;
+      let result: YouTubeResponse;
+
+      try {
+        result = (await response.json()) as YouTubeResponse;
+      } catch {
+        throw new Error("The search service returned an invalid response.");
+      }
 
       if (!response.ok) {
-        throw new Error(result.error ?? "YouTube search failed.");
+        throw new Error(result.error ?? "YouTube Music search failed.");
       }
 
       return result;
     },
     enabled: query.length > 0,
     staleTime: 60_000,
+    retry: 1,
   });
 
   const results = data?.results ?? [];
+
+  const videoPlayer = selectedVideo ? (
+    <Section title={`Now playing: ${selectedVideo.title}`}>
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="aspect-video w-full">
+          <iframe
+            key={selectedVideo.videoId}
+            src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(
+              selectedVideo.videoId,
+            )}?autoplay=1&playsinline=1`}
+            title={selectedVideo.title}
+            className="h-full w-full"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+          />
+        </div>
+
+        <div className="p-4">
+          <h2 className="font-semibold">{selectedVideo.title}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {selectedVideo.artist}
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setSelectedVideo(null)}
+            className="mt-3 text-sm text-muted-foreground underline"
+          >
+            Close player
+          </button>
+        </div>
+      </div>
+    </Section>
+  ) : null;
+
   return (
     <Page>
       <div className="mt-8">
@@ -81,6 +128,8 @@ function SearchPage() {
           Discover your next obsession.
         </p>
       </div>
+
+      {videoPlayer}
 
       {!query ? (
         <Section title="Browse by genre">
@@ -97,6 +146,7 @@ function SearchPage() {
                   size="lg"
                   className="absolute inset-0 h-full w-full rounded-none transition-transform duration-500 group-hover:scale-110"
                 />
+
                 <span className="absolute inset-x-0 bottom-0 p-3 font-display text-lg font-bold text-foreground">
                   {genre.name}
                 </span>
@@ -106,19 +156,16 @@ function SearchPage() {
         </Section>
       ) : isFetching ? (
         <p className="mt-8 text-sm text-muted-foreground">
-          Searching YouTube…
+          Searching YouTube Music…
         </p>
       ) : isError ? (
         <div className="mt-10">
-          <EmptyState
-            icon={<SearchX />}
-            title="Search failed"
-          >
-            We couldn't load results. Please try again.
+          <EmptyState icon={<SearchX />} title="Search failed">
+            We couldn&apos;t load results. Please try again.
           </EmptyState>
         </div>
       ) : results.length > 0 ? (
-        <Section title="YouTube results">
+        <Section title="YouTube Music results">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {results.map((result) => (
               <button
@@ -141,9 +188,16 @@ function SearchPage() {
                     <h2 className="line-clamp-2 font-semibold">
                       {result.title}
                     </h2>
+
                     <p className="mt-2 truncate text-sm text-muted-foreground">
                       {result.artist}
                     </p>
+
+                    {result.duration && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {result.duration}
+                      </p>
+                    )}
                   </div>
 
                   <ExternalLink
