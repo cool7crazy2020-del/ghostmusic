@@ -173,9 +173,15 @@ def resolve_audio():
             "duration": info.get("duration"),
             "contentType": info.get("ext"),
         })
-    except Exception:
+    except Exception as exc:
         app.logger.exception("Audio resolution failed")
-        return jsonify({"error": "Audio could not be resolved for this source."}), 502
+        # Return a concise diagnostic so the frontend can distinguish unavailable
+        # videos from resolver/network/deployment failures; never return a traceback.
+        detail = str(exc).strip()
+        message = "Audio could not be resolved for this source."
+        if detail:
+            message = f"{message} {type(exc).__name__}: {detail[:400]}"
+        return jsonify({"error": message}), 502
 
 
 @app.get("/")
