@@ -1,123 +1,183 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { Info, Play } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, ExternalLink, Headphones, Music2, Search } from "lucide-react";
 
-import heroImage from "@/assets/ghost-hero.jpg";
-import { AlbumCard } from "@/components/ghost/AlbumCard";
-import { Artwork } from "@/components/ghost/Artwork";
-import { useLibrary } from "@/components/ghost/library-context";
 import { Page, Section } from "@/components/ghost/page-parts";
-import { usePlayer } from "@/components/ghost/player-context";
-import { SourceInfoDialog } from "@/components/ghost/SourceInfoDialog";
-import { TrackList } from "@/components/ghost/TrackList";
-import { Button } from "@/components/ui/button";
-import { featuredQuery } from "@/lib/music/source";
+
+type TrackResult = {
+  videoId: string;
+  title: string;
+  artist: string;
+  thumbnail: string | null;
+  duration?: string | null;
+  album?: string | null;
+  artists?: { id?: string; name: string }[];
+};
+
+type ArtistResult = {
+  id: string;
+  name: string;
+  thumbnail: string | null;
+};
+
+type AlbumResult = {
+  id: string;
+  title: string;
+  artist: string;
+  thumbnail: string | null;
+  year?: string | number | null;
+};
+
+type SearchResponse = {
+  results?: TrackResult[];
+  artists?: ArtistResult[];
+  albums?: AlbumResult[];
+};
+
+const SEARCH_API = "https://ghostmusic-s8vd.onrender.com/api/search";
+
+async function searchMusic(query: string): Promise<SearchResponse> {
+  const response = await fetch(`${SEARCH_API}?q=${encodeURIComponent(query)}`);
+  if (!response.ok) throw new Error("Music discovery is temporarily unavailable.");
+  return (await response.json()) as SearchResponse;
+}
+
+function MusicRows({ tracks }: { tracks: TrackResult[] }) {
+  return (
+    <div className="divide-y divide-border/70">
+      {tracks.slice(0, 6).map((track, index) => (
+        <a
+          key={track.videoId || `${track.title}-${index}`}
+          href={`https://music.youtube.com/watch?v=${encodeURIComponent(track.videoId)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group flex items-center gap-4 rounded-lg px-3 py-2 transition-colors hover:bg-accent"
+        >
+          {track.thumbnail ? (
+            <img src={track.thumbnail} alt="" loading="lazy" className="h-12 w-12 shrink-0 rounded-md object-cover" />
+          ) : (
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted"><Music2 size={18} /></div>
+          )}
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-semibold group-hover:text-primary">{track.title}</span>
+            <span className="mt-1 block truncate text-xs text-muted-foreground">{track.artist}{track.album ? ` · ${track.album}` : ""}</span>
+          </span>
+          <span className="hidden text-xs text-muted-foreground sm:block">{track.duration ?? ""}</span>
+          <ExternalLink size={16} className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+        </a>
+      ))}
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "GHOST Music — Home" },
-      { name: "description", content: "A dark, minimal music player with a demo catalog, playlists, likes and queue." },
+      { title: "GHOST Music" },
+      { name: "description", content: "Discover songs, artists, and albums on GHOST Music." },
       { property: "og:title", content: "GHOST Music" },
-      { property: "og:description", content: "A dark, minimal music player with a demo catalog, playlists, likes and queue." },
+      { property: "og:description", content: "Find your next favorite song." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(featuredQuery()),
   component: Home,
 });
 
 function Home() {
-  const { data } = useSuspenseQuery(featuredQuery());
-  const { playTracks } = usePlayer();
-  const { history, ready } = useLibrary();
-  const playable = data.tracks.filter((t) => t.playable);
-  const recent = history.slice(0, 6);
+  const trending = useQuery({
+    queryKey: ["home-discovery", "trending songs"],
+    queryFn: () => searchMusic("trending songs"),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+  const artistsQuery = useQuery({
+    queryKey: ["home-discovery", "popular artists"],
+    queryFn: () => searchMusic("popular artists"),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+  const albumsQuery = useQuery({
+    queryKey: ["home-discovery", "popular albums"],
+    queryFn: () => searchMusic("popular albums"),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+
+  const tracks = trending.data?.results ?? [];
+  const artists = artistsQuery.data?.artists ?? [];
+  const albums = albumsQuery.data?.albums ?? [];
 
   return (
     <Page>
-      <section className="relative mt-6 overflow-hidden rounded-3xl border border-border bg-surface shadow-glow">
-        <img
-          src={heroImage}
-          alt=""
-          width={1600}
-          height={640}
-          className="absolute inset-0 h-full w-full object-cover opacity-80"
-        />
-        <div className="hero-fade absolute inset-0" aria-hidden />
-        <div className="relative max-w-xl px-6 py-10 sm:px-10 sm:py-14">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">Demo catalog</p>
-          <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] text-foreground sm:text-6xl">
-            Music for the quiet hours.
+      <section className="relative mt-6 overflow-hidden rounded-3xl border border-border bg-surface p-6 shadow-glow sm:p-10">
+        <div className="pointer-events-none absolute -right-16 -top-24 size-72 rounded-full bg-primary/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-1/3 size-64 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative max-w-2xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+            <Headphones size={14} /> YOUR MUSIC, YOUR MOOD
+          </div>
+          <h1 className="mt-5 text-4xl font-extrabold tracking-tight sm:text-6xl">
+            Find your <span className="text-primary">next favorite.</span>
           </h1>
-          <p className="mt-4 max-w-md text-sm text-muted-foreground sm:text-base">
-            You're browsing sample music. Songs marked <span className="font-semibold text-primary">Demo</span>{" "}
-            play short original loops; the full catalog needs a supported music provider.
+          <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
+            Explore songs, discover artists, and find albums worth keeping on repeat.
           </p>
-          <div className="mt-7 flex flex-wrap items-center gap-3">
-            <Button variant="glow" size="lg" onClick={() => playTracks(playable)}>
-              <Play className="fill-current" /> Play demo mix
-            </Button>
-            <SourceInfoDialog
-              trigger={
-                <Button variant="pill" size="lg">
-                  <Info /> How playback works
-                </Button>
-              }
-            />
+          <div className="mt-7 flex flex-wrap gap-3">
+            <Link to="/search" className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-glow-sm transition-transform hover:scale-[1.02]">
+              <Search size={17} /> Explore music <ArrowRight size={16} />
+            </Link>
+            <Link to="/explore" className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-5 py-3 text-sm font-semibold transition-colors hover:bg-accent">
+              Browse genres
+            </Link>
           </div>
         </div>
       </section>
 
-      {ready && recent.length > 0 && (
-        <Section
-          title="Jump back in"
-          action={
-            <Link to="/history" className="text-sm font-semibold text-muted-foreground hover:text-foreground">
-              See history
-            </Link>
-          }
-        >
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {recent.map(({ track }) => (
-              <button
-                key={track.id}
-                type="button"
-                onClick={() => playTracks(recent.map((r) => r.track), recent.findIndex((r) => r.track.id === track.id))}
-                className="group flex items-center gap-3 overflow-hidden rounded-lg bg-surface-raised/70 pr-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <Artwork art={track.art} size="sm" className="size-14 rounded-none" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold">{track.title}</span>
-                  <span className="block truncate text-xs text-muted-foreground">{track.artist}</span>
-                </span>
-                <span className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-glow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                  <Play className="size-4 fill-current" />
-                </span>
-              </button>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      <Section title="Featured tracks">
-        <TrackList tracks={data.tracks} label="Featured tracks" />
+      <Section title="Trending songs" action={<Link to="/search" className="text-sm font-semibold text-muted-foreground hover:text-foreground">See all</Link>}>
+        {trending.isLoading ? (
+          <div className="h-56 animate-pulse rounded-xl bg-surface" />
+        ) : tracks.length > 0 ? (
+          <MusicRows tracks={tracks} />
+        ) : (
+          <p className="rounded-xl border border-border bg-surface p-5 text-sm text-muted-foreground">Music discovery is temporarily unavailable. Try searching for a song or artist.</p>
+        )}
       </Section>
 
-      <Section
-        title="Albums"
-        action={
-          <Link to="/explore" className="text-sm font-semibold text-muted-foreground hover:text-foreground">
-            Explore
-          </Link>
-        }
-      >
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {data.albums.map((a) => (
-            <AlbumCard key={a.id} album={a} />
-          ))}
-        </div>
+      <Section title="Artists to explore" action={<Link to="/search" className="text-sm font-semibold text-muted-foreground hover:text-foreground">Discover artists</Link>}>
+        {artistsQuery.isLoading ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="aspect-square animate-pulse rounded-full bg-surface" />)}</div>
+        ) : artists.length > 0 ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {artists.slice(0, 6).map((artist) => (
+              <Link key={artist.id} to="/artist/$artistId" params={{ artistId: artist.id }} className="group min-w-0 rounded-xl p-3 transition-colors hover:bg-accent">
+                {artist.thumbnail ? <img src={artist.thumbnail} alt="" loading="lazy" className="mx-auto aspect-square w-full max-w-40 rounded-full object-cover transition-transform group-hover:scale-[1.03]" /> : <div className="mx-auto flex aspect-square w-full max-w-40 items-center justify-center rounded-full bg-muted"><Music2 size={32} /></div>}
+                <p className="mt-3 truncate text-center text-sm font-semibold">{artist.name}</p>
+                <p className="mt-1 text-center text-xs text-muted-foreground">Artist</p>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Artist discovery will appear here when the music service responds.</p>
+        )}
+      </Section>
+
+      <Section title="Albums to discover" action={<Link to="/search" className="text-sm font-semibold text-muted-foreground hover:text-foreground">Find albums</Link>}>
+        {albumsQuery.isLoading ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="aspect-square animate-pulse rounded-xl bg-surface" />)}</div>
+        ) : albums.length > 0 ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {albums.slice(0, 5).map((album) => (
+              <a key={album.id} href={`https://music.youtube.com/browse/${encodeURIComponent(album.id)}`} target="_blank" rel="noopener noreferrer" className="group min-w-0 rounded-xl p-3 transition-colors hover:bg-accent">
+                {album.thumbnail ? <img src={album.thumbnail} alt="" loading="lazy" className="aspect-square w-full rounded-lg object-cover shadow-md transition-transform group-hover:scale-[1.02]" /> : <div className="flex aspect-square w-full items-center justify-center rounded-lg bg-muted"><Music2 size={32} /></div>}
+                <h3 className="mt-3 truncate text-sm font-semibold">{album.title}</h3>
+                <p className="mt-1 truncate text-xs text-muted-foreground">{album.artist}{album.year ? ` · ${album.year}` : ""}</p>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Album discovery will appear here when the music service responds.</p>
+        )}
       </Section>
     </Page>
   );
