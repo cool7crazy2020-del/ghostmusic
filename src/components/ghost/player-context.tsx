@@ -173,12 +173,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       } else {
         setStatus("paused");
       }
-    }).catch(() => {
+    }).catch((error: unknown) => {
       if (cancelled) return;
       clearStream();
       setStatus("error");
       toast.error("Couldn't resolve this audio", {
-        description: "Check the backend deployment and the source's availability.",
+        description: error instanceof Error ? error.message : "Unknown audio resolver error.",
       });
     });
     return () => {
