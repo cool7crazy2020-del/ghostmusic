@@ -39,6 +39,8 @@ type SongResult = {
   album?: string | null;
 };
 
+type AlbumDetailResponse = { album?: AlbumResult; tracks?: SongResult[]; error?: string };
+
 type SearchResponse = {
   results?: SongResult[];
   artists?: ArtistResult[];
@@ -101,14 +103,13 @@ function SearchPage() {
   const songs = data?.results ?? [];
   const artists = data?.artists ?? [];
   const albums = data?.albums ?? [];
-  const { data: expandedAlbumData, isFetching: isAlbumTracksLoading } = useQuery({
+  const { data: expandedAlbumData, isFetching: isAlbumTracksLoading, isError: isAlbumTracksError } = useQuery({
     queryKey: ["ghost-album-tracklist", expandedAlbumId],
-    queryFn: async (): Promise<SearchResponse> => {
-      const album = albums.find((item) => item.id === expandedAlbumId);
-      if (!album) return { results: [] };
-      const response = await fetch(`${SEARCH_API}?q=${encodeURIComponent(album.title + " " + album.artist)}&limit=50`);
-      if (!response.ok) throw new Error("Could not load album tracks.");
-      return (await response.json()) as SearchResponse;
+    queryFn: async (): Promise<AlbumDetailResponse> => {
+      const response = await fetch("https://ghostmusic-s8vd.onrender.com/api/albums/" + encodeURIComponent(expandedAlbumId!));
+      const result = (await response.json()) as AlbumDetailResponse;
+      if (!response.ok) throw new Error(result.error ?? "Could not load album tracks.");
+      return result;
     },
     enabled: !!expandedAlbumId,
     staleTime: 60_000,
@@ -209,30 +210,48 @@ function SearchPage() {
           )}
 
           {expandedAlbumId && (activeTab === "all" || activeTab === "albums") && (
-            <Section title={`Tracklist · ${albums.find((album) => album.id === expandedAlbumId)?.title ?? "Album"}`}>
-              {isAlbumTracksLoading ? (
-                <p className="py-4 text-sm text-muted-foreground">Loading tracklist…</p>
-              ) : (
-                <div className="divide-y divide-border/70">
-                  {(expandedAlbumData?.results ?? []).filter((song) => {
-                    const album = albums.find((item) => item.id === expandedAlbumId);
-                    return album && song.album && song.album.toLowerCase().includes(album.title.toLowerCase());
-                  }).map((song) => (
-                    <div key={song.videoId} className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-accent/50">
-                      {song.thumbnail ? <img src={song.thumbnail} alt="" className="h-10 w-10 rounded-md object-cover" loading="lazy" /> : <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted"><Music2 size={16} /></div>}
+            <section className="mt-8 overflow-hidden rounded-2xl border border-border/70 bg-surface">
+              {(() => {
+                const album = albums.find((item) => item.id === expandedAlbumId);
+                const albumTracks = expandedAlbumData?.tracks ?? [];
+                const playableTracks = albumTracks.map(toLibraryTrack);
+                return (
+                  <>
+                    <div className="relative isolate flex flex-col gap-6 overflow-hidden p-6 sm:flex-row sm:items-end sm:p-8">
+                      {album?.thumbnail && <img src={album.thumbnail} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover opacity-20 blur-2xl" /> }
+                      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/85 to-background/45" />
+                      {album?.thumbnail ? <img src={album.thumbnail} alt={album.title} className="aspect-square w-44 shrink-0 rounded-xl object-cover shadow-2xl sm:w-56" /> : <div className="flex aspect-square w-44 shrink-0 items-center justify-center rounded-xl bg-muted sm:w-56"><Music2 size={48} /></div>}
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{song.title}</p>
-                        <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Album</p>
+                        <h2 className="mt-3 text-3xl font-extrabold leading-tight sm:text-5xl">{album?.title ?? "Album"}</h2>
+                        <p className="mt-3 text-sm font-medium text-foreground">{album?.artist ?? "Unknown artist"}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{album?.year ?? ""}{albumTracks.length ? ` · ${albumTracks.length} songs` : ""}</p>
+                        <div className="mt-6 flex flex-wrap items-center gap-3">
+                          <Button variant="glow" size="lg" disabled={!playableTracks.length} onClick={() => playTrack(playableTracks[0], playableTracks)}><Play className="size-4 fill-current" /> Play album</Button>
+                          <Button variant="subtle" size="lg" onClick={() => setExpandedAlbumId(null)}>Close album</Button>
+                        </div>
                       </div>
-                      <span className="hidden text-xs text-muted-foreground sm:block">{song.duration ?? ""}</span>
-                      <Button variant="subtle" size="icon-sm" aria-label={`Play ${song.title}`} onClick={() => playTrack(toLibraryTrack(song), (expandedAlbumData?.results ?? []).map(toLibraryTrack))}><Play size={16} /></Button>
                     </div>
-                  ))}
-                </div>
-              )}
-            </Section>
+                    <div className="px-4 pb-5 sm:px-6">
+                      <div className="mb-2 grid grid-cols-[2rem_minmax(0,1fr)_4rem] gap-3 border-b border-border px-3 py-3 text-xs uppercase tracking-wider text-muted-foreground"><span>#</span><span>Title</span><span className="text-right">Time</span></div>
+                      {isAlbumTracksLoading ? <p className="px-3 py-8 text-sm text-muted-foreground">Loading album tracks…</p> : isAlbumTracksError ? <p className="px-3 py-8 text-sm text-muted-foreground">Couldn’t load this album’s tracklist. Try clicking the album again.</p> : albumTracks.length ? (
+                        <div className="divide-y divide-border/60">
+                          {albumTracks.map((song, index) => (
+                            <div key={song.videoId} className="group grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-accent/60 sm:grid-cols-[2rem_minmax(0,1fr)_4rem_auto]">
+                              <span className="text-sm tabular-nums text-muted-foreground">{index + 1}</span>
+                              <div className="flex min-w-0 items-center gap-3">{song.thumbnail && <img src={song.thumbnail} alt="" loading="lazy" className="size-10 shrink-0 rounded-md object-cover" />}<div className="min-w-0"><p className="truncate text-sm font-medium">{song.title}</p><p className="truncate text-xs text-muted-foreground">{song.artist}</p></div></div>
+                              <span className="text-right text-xs tabular-nums text-muted-foreground">{song.duration ?? ""}</span>
+                              <Button variant="subtle" size="icon-sm" aria-label={`Play ${song.title}`} onClick={() => playTrack(toLibraryTrack(song), playableTracks)}><Play size={15} /></Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : <p className="px-3 py-8 text-sm text-muted-foreground">No tracks were returned for this album.</p>}
+                    </div>
+                  </>
+                );
+              })()}
+            </section>
           )}
-
           {(activeTab === "all" || activeTab === "songs") && songs.length > 0 && (
             <Section title="Songs">
               <div className="divide-y divide-border/70">
