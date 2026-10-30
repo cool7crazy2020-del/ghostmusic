@@ -44,7 +44,7 @@ function YouTubeBridge({ videoId, onReady }: { videoId: string | null; onReady: 
     };
   }, [videoId, onReady]);
   if (!videoId) return null;
-  return <div className="fixed bottom-[6.5rem] right-4 z-50 overflow-hidden rounded-xl border border-border bg-black shadow-2xl"><div className="px-3 py-1.5 text-[11px] font-medium text-white/80">YouTube player · GHOST</div><div ref={hostRef} className="h-[1px] w-[1px]" /></div>;
+  return <div className="fixed bottom-[6.5rem] right-4 z-50 overflow-hidden rounded-xl border border-border bg-black shadow-2xl"><div className="px-3 py-1.5 text-[11px] font-medium text-white/80"> GHOST MUSIC </div><div ref={hostRef} className="h-[1px] w-[1px]" /></div>;
 }
 
 export function PlayerBar() {
