@@ -210,7 +210,8 @@ function SearchPage() {
           )}
 
           {expandedAlbumId && (activeTab === "all" || activeTab === "albums") && (
-            <section className="mt-8 overflow-hidden rounded-2xl border border-border/70 bg-surface">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm sm:p-6" onMouseDown={(event) => { if (event.target === event.currentTarget) setExpandedAlbumId(null); }}>
+            <section role="dialog" aria-modal="true" aria-label="Album tracklist" className="relative max-h-[92vh] w-full max-w-5xl overflow-y-auto overscroll-contain rounded-2xl border border-border/70 bg-surface shadow-2xl">
               {(() => {
                 const album = albums.find((item) => item.id === expandedAlbumId);
                 const albumTracks = expandedAlbumData?.tracks ?? [];
@@ -251,6 +252,7 @@ function SearchPage() {
                 );
               })()}
             </section>
+            </div>
           )}
           {(activeTab === "all" || activeTab === "songs") && songs.length > 0 && (
             <Section title="Songs">
