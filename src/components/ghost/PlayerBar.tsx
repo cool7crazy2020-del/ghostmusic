@@ -36,7 +36,12 @@ function YouTubeBridge({ videoId, onReady }: { videoId: string | null; onReady: 
       const previous = window.onYouTubeIframeAPIReady;
       window.onYouTubeIframeAPIReady = () => { previous?.(); create(); };
     }
-    return () => { cancelled = true; playerRef.current?.destroy(); playerRef.current = null; };
+    return () => {
+      cancelled = true;
+      onReady(null);
+      playerRef.current?.destroy();
+      playerRef.current = null;
+    };
   }, [videoId, onReady]);
   if (!videoId) return null;
   return <div className="fixed bottom-[6.5rem] right-4 z-50 overflow-hidden rounded-xl border border-border bg-black shadow-2xl"><div className="px-3 py-1.5 text-[11px] font-medium text-white/80">YouTube player · GHOST</div><div ref={hostRef} className="h-[200px] w-[200px]" /></div>;
