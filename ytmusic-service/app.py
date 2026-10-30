@@ -92,6 +92,39 @@ def search():
         return jsonify({"error": "Search failed"}), 502
 
 
+@app.get("/api/albums/<path:album_id>")
+def album_tracklist(album_id):
+    if not album_id or len(album_id) > 200:
+        return jsonify({"error": "Invalid album id"}), 400
+    try:
+        album = ytmusic.get_album(album_id)
+        if not album:
+            return jsonify({"error": "Album not found"}), 404
+        artists = album.get("artists", []) or []
+        tracks = []
+        for track in album.get("tracks", []) or []:
+            track_artists = track.get("artists", []) or artists
+            video_id = track.get("videoId")
+            if not video_id:
+                continue
+            tracks.append({
+                "videoId": video_id,
+                "title": track.get("title", "Unknown title"),
+                "artist": ", ".join(item.get("name", "") for item in track_artists) or "Unknown artist",
+                "artists": [{"id": item.get("id"), "name": item.get("name", "Unknown artist")} for item in track_artists],
+                "thumbnail": best_thumbnail(track) or best_thumbnail(album),
+                "duration": track.get("duration"),
+                "album": album.get("title", "Unknown album"),
+            })
+        return jsonify({
+            "album": clean_album(album),
+            "tracks": tracks,
+        })
+    except Exception:
+        app.logger.exception("Album tracklist lookup failed")
+        return jsonify({"error": "Album tracklist unavailable"}), 502
+
+
 @app.get("/api/artists/<path:artist_id>")
 def artist_profile(artist_id):
     if not artist_id or not artist_id.startswith("UC"):
