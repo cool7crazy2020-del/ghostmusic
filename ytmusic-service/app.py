@@ -42,13 +42,17 @@ def clean_album(album):
 @app.get("/api/search")
 def search():
     query = request.args.get("q", "").strip()
+    try:
+        limit = max(1, min(int(request.args.get("limit", "20")), 100))
+    except ValueError:
+        limit = 20
     if not query:
         return jsonify({"results": [], "artists": [], "albums": []})
 
     try:
-        tracks = ytmusic.search(query, filter="songs", limit=20)
-        artists = ytmusic.search(query, filter="artists", limit=8)
-        albums = ytmusic.search(query, filter="albums", limit=12)
+        tracks = ytmusic.search(query, filter="songs", limit=limit)
+        artists = ytmusic.search(query, filter="artists", limit=min(limit, 40))
+        albums = ytmusic.search(query, filter="albums", limit=min(limit, 40))
 
         results = []
         for track in tracks:
