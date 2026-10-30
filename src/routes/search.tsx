@@ -76,12 +76,14 @@ function SearchPage() {
   const { q } = Route.useSearch();
   const query = q?.trim() ?? "";
   const [activeTab, setActiveTab] = useState<ResultTab>("all");
+  const [resultLimit, setResultLimit] = useState(20);
+  const [expandedAlbumId, setExpandedAlbumId] = useState<string | null>(null);
   const { playTrack } = usePlayer();
 
   const { data, isFetching, isError } = useQuery({
-    queryKey: ["ghost-search", query],
+    queryKey: ["ghost-search", query, resultLimit],
     queryFn: async (): Promise<SearchResponse> => {
-      const response = await fetch(`${SEARCH_API}?q=${encodeURIComponent(query)}`);
+      const response = await fetch(`${SEARCH_API}?q=${encodeURIComponent(query)}&limit=${resultLimit}`);
       let result: SearchResponse;
       try {
         result = (await response.json()) as SearchResponse;
@@ -99,6 +101,18 @@ function SearchPage() {
   const songs = data?.results ?? [];
   const artists = data?.artists ?? [];
   const albums = data?.albums ?? [];
+  const { data: expandedAlbumData, isFetching: isAlbumTracksLoading } = useQuery({
+    queryKey: ["ghost-album-tracklist", expandedAlbumId],
+    queryFn: async (): Promise<SearchResponse> => {
+      const album = albums.find((item) => item.id === expandedAlbumId);
+      if (!album) return { results: [] };
+      const response = await fetch(`${SEARCH_API}?q=${encodeURIComponent(album.title + " " + album.artist)}&limit=50`);
+      if (!response.ok) throw new Error("Could not load album tracks.");
+      return (await response.json()) as SearchResponse;
+    },
+    enabled: !!expandedAlbumId,
+    staleTime: 60_000,
+  });
 
   return (
     <Page>
@@ -173,12 +187,12 @@ function SearchPage() {
             <Section title="Albums">
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {albums.map((album) => (
-                  <a
+                  <button
                     key={album.id}
-                    href={`https://music.youtube.com/browse/${encodeURIComponent(album.id)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group min-w-0 rounded-xl p-3 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    type="button"
+                    aria-expanded={expandedAlbumId === album.id}
+                    onClick={() => setExpandedAlbumId((current) => current === album.id ? null : album.id)}
+                    className={`group min-w-0 rounded-xl p-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${expandedAlbumId === album.id ? "bg-accent ring-1 ring-primary/40" : ""}`}
                   >
                     {album.thumbnail ? (
                       <img src={album.thumbnail} alt="" loading="lazy" className="aspect-square w-full rounded-lg object-cover shadow-md transition-transform group-hover:scale-[1.02]" />
@@ -187,9 +201,35 @@ function SearchPage() {
                     )}
                     <h2 className="mt-3 truncate text-sm font-semibold">{album.title}</h2>
                     <p className="mt-1 truncate text-xs text-muted-foreground">{album.artist}{album.year ? ` · ${album.year}` : ""}</p>
-                  </a>
+                    <p className="mt-2 text-xs font-medium text-primary">{expandedAlbumId === album.id ? "Hide tracklist" : "View tracklist"}</p>
+                  </button>
                 ))}
               </div>
+            </Section>
+          )}
+
+          {expandedAlbumId && (activeTab === "all" || activeTab === "albums") && (
+            <Section title={`Tracklist · ${albums.find((album) => album.id === expandedAlbumId)?.title ?? "Album"}`}>
+              {isAlbumTracksLoading ? (
+                <p className="py-4 text-sm text-muted-foreground">Loading tracklist…</p>
+              ) : (
+                <div className="divide-y divide-border/70">
+                  {(expandedAlbumData?.results ?? []).filter((song) => {
+                    const album = albums.find((item) => item.id === expandedAlbumId);
+                    return album && song.album && song.album.toLowerCase().includes(album.title.toLowerCase());
+                  }).map((song) => (
+                    <div key={song.videoId} className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-accent/50">
+                      {song.thumbnail ? <img src={song.thumbnail} alt="" className="h-10 w-10 rounded-md object-cover" loading="lazy" /> : <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted"><Music2 size={16} /></div>}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{song.title}</p>
+                        <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
+                      </div>
+                      <span className="hidden text-xs text-muted-foreground sm:block">{song.duration ?? ""}</span>
+                      <Button variant="subtle" size="icon-sm" aria-label={`Play ${song.title}`} onClick={() => playTrack(toLibraryTrack(song), (expandedAlbumData?.results ?? []).map(toLibraryTrack))}><Play size={16} /></Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Section>
           )}
 
@@ -236,6 +276,14 @@ function SearchPage() {
               <EmptyState icon={<SearchX />} title={`No ${activeTab === "all" ? "results" : activeTab} for “${query}”`}>
                 Try another search or choose a different category.
               </EmptyState>
+            </div>
+          )}
+
+          {query && !isFetching && !isError && (songs.length >= resultLimit || albums.length >= resultLimit || artists.length >= resultLimit) && (
+            <div className="flex justify-center py-8">
+              <Button variant="subtle" onClick={() => setResultLimit((limit) => Math.min(limit + 20, 100))} disabled={resultLimit >= 100}>
+                Show more
+              </Button>
             </div>
           )}
         </>
