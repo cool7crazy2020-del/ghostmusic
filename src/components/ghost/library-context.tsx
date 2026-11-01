@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState, useRef, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import {
@@ -10,6 +10,7 @@ import {
   type LibraryState,
 } from "@/lib/library-store";
 import type { Track } from "@/lib/music/types";
+import { cloudRequest, getSession } from "@/lib/ghost-auth";
 
 interface LibraryContextValue extends LibraryState {
   /** False until saved data has been read on the client (avoids flashing empty states). */
@@ -42,6 +43,9 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(libraryReducer, emptyLibrary);
   const [ready, setReady] = useState(false);
   const [storageAvailable, setStorageAvailable] = useState(true);
+  const [cloudUserId, setCloudUserId] = useState<string | null>(null);
+  const cloudReadyForUser = useRef<string | null>(null);
+  const lastCloudPayload = useRef("");
 
   useEffect(() => {
     const storage = safeStorage();
@@ -58,6 +62,59 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       setStorageAvailable(false);
     }
   }, [state, ready, storageAvailable]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadCloud = async (userId: string | null) => {
+      cloudReadyForUser.current = null;
+      setCloudUserId(userId);
+      if (!userId) return;
+      try {
+        const response = await cloudRequest(`ghost_libraries?select=library&user_id=eq.${encodeURIComponent(userId)}`, "GET");
+        if (!response || cancelled) return;
+        const rows = await response.json() as { library?: LibraryState }[];
+        if (cancelled) return;
+        if (rows[0]?.library && typeof rows[0].library === "object") {
+          const restored = parseStoredLibrary(JSON.stringify(rows[0].library));
+          dispatch({ type: "hydrate", state: restored });
+          lastCloudPayload.current = JSON.stringify(restored);
+        } else {
+          const localState = parseStoredLibrary(safeStorage()?.getItem(STORAGE_KEY) ?? null);
+          const payload = JSON.stringify(localState);
+          await cloudRequest("ghost_libraries?on_conflict=user_id", "POST", { user_id: userId, library: localState, updated_at: new Date().toISOString() });
+          lastCloudPayload.current = payload;
+        }
+        cloudReadyForUser.current = userId;
+      } catch (error) {
+        console.error("GHOST cloud library load failed", error);
+        cloudReadyForUser.current = userId;
+        toast.error("Cloud sync unavailable", { description: error instanceof Error ? error.message : "Your local library is still available." });
+      }
+    };
+    const handleAuth = (event?: Event) => {
+      const session = event ? (event as CustomEvent).detail : getSession();
+      void loadCloud(session?.user?.id ?? null);
+    };
+    handleAuth();
+    window.addEventListener("ghost-auth-change", handleAuth);
+    return () => { cancelled = true; window.removeEventListener("ghost-auth-change", handleAuth); };
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !cloudUserId || cloudReadyForUser.current !== cloudUserId) return;
+    const payload = JSON.stringify(state);
+    if (payload === lastCloudPayload.current) return;
+    const timer = window.setTimeout(async () => {
+      try {
+        await cloudRequest("ghost_libraries?on_conflict=user_id", "POST", { user_id: cloudUserId, library: state, updated_at: new Date().toISOString() });
+        lastCloudPayload.current = payload;
+      } catch (error) {
+        console.error("GHOST cloud library save failed", error);
+        toast.error("Couldn't save to your account", { description: "Your changes remain saved in this browser. Check your connection and Supabase setup." });
+      }
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [state, ready, cloudUserId]);
 
   const isLiked = useCallback((id: string) => state.liked.some((t) => t.id === id), [state.liked]);
 
