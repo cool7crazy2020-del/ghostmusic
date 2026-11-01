@@ -83,7 +83,6 @@ function Playlists() {
       setSpotifyError("Choose the GHOST playlist to add songs to.");
       return;
     }
-    const playlistId = importMode === "new" ? createPlaylist("Spotify Import") : targetPlaylistId;
     setImporting(true);
     try {
       let tracks: { title: string; artist: string }[] = [];
@@ -102,6 +101,7 @@ function Playlists() {
         tracks = data.tracks;
       }
       if (!tracks.length) throw new Error("Paste at least one song, one per line.");
+      const playlistId = importMode === "new" ? createPlaylist("Spotify Import") : targetPlaylistId;
       let added = 0;
       const unmatched: string[] = [];
       setImportProgress({ done: 0, total: tracks.length, added: 0 });
