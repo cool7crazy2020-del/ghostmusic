@@ -86,10 +86,22 @@ function Playlists() {
     const playlistId = importMode === "new" ? createPlaylist("Spotify Import") : targetPlaylistId;
     setImporting(true);
     try {
-      const response = await fetch("https://ghostmusic-s8vd.onrender.com/api/spotify-playlist?url=" + encodeURIComponent(spotifyUrl.trim()));
-      const data = await response.json() as { tracks?: { title: string; artist: string }[]; error?: string };
-      if (!response.ok || !data.tracks?.length) throw new Error(data.error || "Couldn't read the Spotify playlist.");
-      const tracks = data.tracks;
+      let tracks: { title: string; artist: string }[] = [];
+      if (pastedTrackList.trim()) {
+        tracks = pastedTrackList.split(String.fromCharCode(10)).map(line => line.trim()).filter(Boolean).map(line => {
+          const pieces = line.split(" — ");
+          if (pieces.length > 1) return { title: pieces[0].trim(), artist: pieces.slice(1).join(" — ").trim() };
+          const tab = line.split(String.fromCharCode(9));
+          if (tab.length > 1) return { title: tab[0].trim(), artist: tab.slice(1).join(" ").trim() };
+          return { title: line, artist: "" };
+        });
+      } else {
+        const response = await fetch("https://ghostmusic-s8vd.onrender.com/api/spotify-playlist?url=" + encodeURIComponent(spotifyUrl.trim()));
+        const data = await response.json() as { tracks?: { title: string; artist: string }[]; error?: string };
+        if (!response.ok || !data.tracks?.length) throw new Error(data.error || "Spotify did not expose the track list. Paste the list below.");
+        tracks = data.tracks;
+      }
+      if (!tracks.length) throw new Error("Paste at least one song, one per line.");
       let added = 0;
       const unmatched: string[] = [];
       setImportProgress({ done: 0, total: tracks.length, added: 0 });
