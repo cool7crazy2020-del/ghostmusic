@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ExternalLink, ListMusic, Plus, X } from "lucide-react";
+import { Check, ExternalLink, ListMusic, LoaderCircle, Plus, X } from "lucide-react";
 import { useState } from "react";
 
 import { Artwork } from "@/components/ghost/Artwork";
@@ -45,12 +45,18 @@ export function PlaylistCover({ playlist, className }: { playlist: Playlist; cla
 }
 
 function Playlists() {
-  const { playlists, ready } = useLibrary();
+  const { playlists, ready, createPlaylist, addToPlaylist } = useLibrary();
   const [open, setOpen] = useState(false);
   const [spotifyUrl, setSpotifyUrl] = useState("");
   const [spotifyEmbed, setSpotifyEmbed] = useState<string | null>(null);
   const [spotifyError, setSpotifyError] = useState("");
   const [spotifyOpen, setSpotifyOpen] = useState(false);
+  const [importMode, setImportMode] = useState<"new" | "existing">("new");
+  const [targetPlaylistId, setTargetPlaylistId] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState({ done: 0, total: 0, added: 0 });
+  const [importUnmatched, setImportUnmatched] = useState<string[]>([]);
+  const [importComplete, setImportComplete] = useState(false);
 
   function openSpotifyPlaylist() {
     setSpotifyError("");
@@ -65,6 +71,70 @@ function Playlists() {
       setSpotifyEmbed(`https://open.spotify.com/embed/playlist/${match[1]}?utm_source=ghostmusic`);
     } catch {
       setSpotifyError("That link doesn’t look right. Paste the full Spotify playlist URL.");
+    }
+  }
+
+  async function importSpotifyPlaylist() {
+    setSpotifyError("");
+    setImportUnmatched([]);
+    setImportComplete(false);
+    if (importMode === "existing" && !targetPlaylistId) {
+      setSpotifyError("Choose the GHOST playlist to add songs to.");
+      return;
+    }
+    const playlistId = importMode === "new" ? createPlaylist("Spotify Import") : targetPlaylistId;
+    setImporting(true);
+    try {
+      const response = await fetch("https://ghostmusic-s8vd.onrender.com/api/spotify-playlist?url=" + encodeURIComponent(spotifyUrl.trim()));
+      const data = await response.json() as { tracks?: { title: string; artist: string }[]; error?: string };
+      if (!response.ok || !data.tracks?.length) throw new Error(data.error || "Couldn't read the Spotify playlist.");
+      const tracks = data.tracks;
+      let added = 0;
+      const unmatched: string[] = [];
+      setImportProgress({ done: 0, total: tracks.length, added: 0 });
+      const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      for (let index = 0; index < tracks.length; index++) {
+        const item = tracks[index];
+        try {
+          const searchResponse = await fetch("https://ghostmusic-s8vd.onrender.com/api/search?q=" + encodeURIComponent(item.title + " " + item.artist) + "&limit=8");
+          const searchData = await searchResponse.json() as { results?: { videoId: string; title: string; artist: string; duration?: string | null; album?: string | null }[] };
+          const candidates = searchResponse.ok ? searchData.results || [] : [];
+          const wantedTitle = normalize(item.title);
+          const wantedArtist = normalize(item.artist);
+          const ranked = candidates.map(song => {
+            const title = normalize(song.title);
+            const artist = normalize(song.artist);
+            const titleScore = title === wantedTitle ? 3 : title.includes(wantedTitle) || wantedTitle.includes(title) ? 1 : 0;
+            const artistScore = artist.includes(wantedArtist) || wantedArtist.includes(artist) ? 2 : 0;
+            return { song, score: titleScore + artistScore };
+          }).sort((a, b) => b.score - a.score);
+          const best = ranked[0];
+          if (!best || best.score < 2 || !best.song.videoId) {
+            unmatched.push(item.title + " — " + item.artist);
+          } else {
+            const song = best.song;
+            const duration = song.duration?.split(":").reduce((total, part) => total * 60 + Number(part), 0) ?? 0;
+            addToPlaylist(playlistId, {
+              id: "yt-" + song.videoId, title: song.title, artist: song.artist || item.artist,
+              albumId: song.videoId, albumTitle: song.album ?? "Unknown album",
+              durationSec: Number.isFinite(duration) ? duration : 0, art: 0, genre: "unknown",
+              playable: true, sourceId: "youtube-audio",
+              sourceUrl: "https://www.youtube.com/watch?v=" + encodeURIComponent(song.videoId),
+            });
+            added++;
+          }
+        } catch {
+          unmatched.push(item.title + " — " + item.artist);
+        }
+        setImportProgress({ done: index + 1, total: tracks.length, added });
+      }
+      setImportUnmatched(unmatched);
+      setImportComplete(true);
+      if (added === 0 && unmatched.length) setSpotifyError("The playlist was read, but no tracks could be confidently matched to YouTube.");
+    } catch (error) {
+      setSpotifyError(error instanceof Error ? error.message : "Spotify playlist import failed.");
+    } finally {
+      setImporting(false);
     }
   }
 
@@ -124,8 +194,8 @@ function Playlists() {
           <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
             <div className="flex items-center justify-between border-b border-border p-5">
               <div>
-                <h2 id="spotify-import-title" className="text-xl font-bold">Open a Spotify playlist</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Paste a link to view it right inside GHOST.</p>
+                <h2 id="spotify-import-title" className="text-xl font-bold">Import a Spotify playlist</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Bring your Spotify songs into a GHOST playlist.</p>
               </div>
               <Button variant="ghost" size="icon" aria-label="Close Spotify playlist" onClick={() => setSpotifyOpen(false)}><X /></Button>
             </div>
@@ -140,7 +210,21 @@ function Playlists() {
               ) : (
                 <div className="rounded-xl border border-dashed border-border px-5 py-10 text-center text-sm text-muted-foreground">Your playlist will appear here after you paste its link.</div>
               )}
-              <p className="text-xs leading-relaxed text-muted-foreground">No API or Spotify login inside GHOST needed. Spotify provides the embedded player; playback and sign-in limits are controlled by Spotify. This opens the playlist in GHOST—it doesn’t copy the songs into your GHOST library.</p>
+
+              <div className="grid gap-3 rounded-xl border border-border bg-surface p-4">
+                <p className="text-sm font-semibold">Where should the songs go?</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant={importMode === "new" ? "glow" : "outline"} disabled={importing} onClick={() => setImportMode("new")}>Create new playlist</Button>
+                  <Button type="button" variant={importMode === "existing" ? "glow" : "outline"} disabled={importing} onClick={() => setImportMode("existing")}>Add to existing</Button>
+                </div>
+                {importMode === "existing" && <select value={targetPlaylistId} onChange={(event) => setTargetPlaylistId(event.target.value)} disabled={importing} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"><option value="">Choose a GHOST playlist…</option>{playlists.map((playlist) => <option key={playlist.id} value={playlist.id}>{playlist.name} ({playlist.tracks.length} songs)</option>)}</select>}
+                <Button type="button" variant="glow" disabled={importing || !spotifyUrl.trim()} onClick={importSpotifyPlaylist}>{importing ? <><LoaderCircle className="size-4 animate-spin" /> Importing {importProgress.done}/{importProgress.total || "…"}</> : <><Check className="size-4" /> Import songs into GHOST</>}</Button>
+                {importing && importProgress.total > 0 && <div className="space-y-1"><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{ width: (Math.round(importProgress.done / importProgress.total * 100)) + "%" }} /></div><p className="text-xs text-muted-foreground">{importProgress.added} matched · {importProgress.done} of {importProgress.total} checked</p></div>}
+                {importComplete && <p className="text-sm text-foreground">Import finished: {importProgress.added} songs matched. {importUnmatched.length} couldn't be matched.</p>}
+                {importUnmatched.length > 0 && <details className="text-sm"><summary className="cursor-pointer font-medium">Show unmatched songs ({importUnmatched.length})</summary><ul className="mt-2 max-h-40 space-y-1 overflow-y-auto text-muted-foreground">{importUnmatched.map((song, index) => <li key={song + index}>{song}</li>)}</ul></details>}
+              </div>
+              {spotifyEmbed && <details className="text-sm text-muted-foreground"><summary className="cursor-pointer">Preview Spotify playlist</summary><iframe title="Spotify playlist preview" src={spotifyEmbed} width="100%" height="350" style={{ border: 0, borderRadius: 12, marginTop: 12 }} allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" /></details>}
+              <p className="text-xs leading-relaxed text-muted-foreground">GHOST reads the public Spotify playlist page without Spotify API credentials, then matches songs to YouTube. Spotify may block track-list access for some playlists. Matching is best-effort; duplicate YouTube tracks are skipped.</p>
             </div>
           </div>
         </div>
