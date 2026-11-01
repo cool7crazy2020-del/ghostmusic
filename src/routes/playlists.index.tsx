@@ -24,6 +24,7 @@ export const Route = createFileRoute("/playlists/")({
 });
 
 export function PlaylistCover({ playlist, className }: { playlist: Playlist; className?: string }) {
+  if (playlist.image) return <img src={playlist.image} alt={`${playlist.name} cover`} className={`rounded-lg object-cover ${className ?? ""}`} />;
   const arts = playlist.tracks.slice(0, 4).map((t) => t.art);
   if (arts.length < 4) {
     return arts.length > 0 ? (
