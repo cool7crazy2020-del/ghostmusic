@@ -57,12 +57,12 @@ function Playlists() {
     try {
       const url = new URL(spotifyUrl.trim());
       const allowedHost = url.hostname === "open.spotify.com" || url.hostname === "www.open.spotify.com";
-      const match = url.pathname.match(/^\\/(playlist)\\/([a-zA-Z0-9]+)\\/?$/);
+      const match = url.pathname.match(/^\/playlist\/([a-zA-Z0-9]+)\/?$/);
       if (!allowedHost || !match) {
         setSpotifyError("Paste a Spotify playlist link, like https://open.spotify.com/playlist/…");
         return;
       }
-      setSpotifyEmbed(`https://open.spotify.com/embed/playlist/${match[2]}?utm_source=ghostmusic`);
+      setSpotifyEmbed(`https://open.spotify.com/embed/playlist/${match[1]}?utm_source=ghostmusic`);
     } catch {
       setSpotifyError("That link doesn’t look right. Paste the full Spotify playlist URL.");
     }
