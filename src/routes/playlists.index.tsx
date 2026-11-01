@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ListMusic, Plus } from "lucide-react";
+import { ExternalLink, ListMusic, Plus, X } from "lucide-react";
 import { useState } from "react";
 
 import { Artwork } from "@/components/ghost/Artwork";
@@ -47,6 +47,26 @@ export function PlaylistCover({ playlist, className }: { playlist: Playlist; cla
 function Playlists() {
   const { playlists, ready } = useLibrary();
   const [open, setOpen] = useState(false);
+  const [spotifyUrl, setSpotifyUrl] = useState("");
+  const [spotifyEmbed, setSpotifyEmbed] = useState<string | null>(null);
+  const [spotifyError, setSpotifyError] = useState("");
+  const [spotifyOpen, setSpotifyOpen] = useState(false);
+
+  function openSpotifyPlaylist() {
+    setSpotifyError("");
+    try {
+      const url = new URL(spotifyUrl.trim());
+      const allowedHost = url.hostname === "open.spotify.com" || url.hostname === "www.open.spotify.com";
+      const match = url.pathname.match(/^\\/(playlist)\\/([a-zA-Z0-9]+)\\/?$/);
+      if (!allowedHost || !match) {
+        setSpotifyError("Paste a Spotify playlist link, like https://open.spotify.com/playlist/…");
+        return;
+      }
+      setSpotifyEmbed(`https://open.spotify.com/embed/playlist/${match[2]}?utm_source=ghostmusic`);
+    } catch {
+      setSpotifyError("That link doesn’t look right. Paste the full Spotify playlist URL.");
+    }
+  }
 
   return (
     <Page>
@@ -55,9 +75,14 @@ function Playlists() {
           <h1 className="text-3xl font-extrabold sm:text-4xl">Playlists</h1>
           <p className="mt-2 text-sm text-muted-foreground">Saved in this browser.</p>
         </div>
-        <Button variant="glow" onClick={() => setOpen(true)}>
-          <Plus /> New playlist
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => { setSpotifyOpen(true); setSpotifyEmbed(null); setSpotifyError(""); setSpotifyUrl(""); }}>
+            <ExternalLink /> Open Spotify playlist
+          </Button>
+          <Button variant="glow" onClick={() => setOpen(true)}>
+            <Plus /> New playlist
+          </Button>
+        </div>
       </div>
 
       <div className="mt-8">
@@ -94,6 +119,32 @@ function Playlists() {
           </div>
         )}
       </div>
+      {spotifyOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="spotify-import-title">
+          <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border p-5">
+              <div>
+                <h2 id="spotify-import-title" className="text-xl font-bold">Open a Spotify playlist</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Paste a link to view it right inside GHOST.</p>
+              </div>
+              <Button variant="ghost" size="icon" aria-label="Close Spotify playlist" onClick={() => setSpotifyOpen(false)}><X /></Button>
+            </div>
+            <div className="space-y-3 p-5">
+              <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); openSpotifyPlaylist(); }}>
+                <input value={spotifyUrl} onChange={(event) => setSpotifyUrl(event.target.value)} placeholder="https://open.spotify.com/playlist/…" aria-label="Spotify playlist URL" className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+                <Button type="submit" variant="glow">Open playlist</Button>
+              </form>
+              {spotifyError && <p role="alert" className="text-sm text-destructive">{spotifyError}</p>}
+              {spotifyEmbed ? (
+                <iframe title="Spotify playlist player" src={spotifyEmbed} width="100%" height="500" style={{ border: 0, borderRadius: 12 }} allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" />
+              ) : (
+                <div className="rounded-xl border border-dashed border-border px-5 py-10 text-center text-sm text-muted-foreground">Your playlist will appear here after you paste its link.</div>
+              )}
+              <p className="text-xs leading-relaxed text-muted-foreground">No API or Spotify login inside GHOST needed. Spotify provides the embedded player; playback and sign-in limits are controlled by Spotify. This opens the playlist in GHOST—it doesn’t copy the songs into your GHOST library.</p>
+            </div>
+          </div>
+        </div>
+      )}
       <CreatePlaylistDialog open={open} onOpenChange={setOpen} />
     </Page>
   );
