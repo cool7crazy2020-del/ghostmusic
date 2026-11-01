@@ -20,6 +20,7 @@ interface LibraryContextValue extends LibraryState {
   toggleLike: (track: Track) => void;
   createPlaylist: (name: string, track?: Track) => string;
   renamePlaylist: (id: string, name: string) => void;
+  setPlaylistImage: (id: string, image: string | null) => void;
   deletePlaylist: (id: string) => void;
   addToPlaylist: (id: string, track: Track) => void;
   removeFromPlaylist: (id: string, trackId: string) => void;
@@ -98,6 +99,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       toggleLike,
       createPlaylist,
       renamePlaylist: (id, name) => dispatch({ type: "renamePlaylist", id, name }),
+      setPlaylistImage: (id, image) => dispatch({ type: "setPlaylistImage", id, image }),
       deletePlaylist: (id) => dispatch({ type: "deletePlaylist", id }),
       addToPlaylist,
       removeFromPlaylist: (id, trackId) => dispatch({ type: "removeFromPlaylist", id, trackId }),
