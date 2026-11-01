@@ -223,23 +223,44 @@ def resolve_audio():
 
 
 def _find_spotify_tracks(value, found):
-    """Walk Spotify's public page JSON for track objects without using Spotify's API."""
+    """Walk public Spotify page/embed JSON and collect track records."""
     if isinstance(value, dict):
-        # Spotify's embedded page data has appeared in a few shapes over time.
-        name = value.get("name") or value.get("title")
-        artists = value.get("artists") or value.get("artistNames")
-        uri = value.get("uri") or value.get("id")
-        if isinstance(name, str) and isinstance(artists, list) and artists:
+        name = value.get("name") or value.get("title") or value.get("trackName")
+        uri = value.get("uri") or value.get("trackUri")
+        kind = str(value.get("type") or value.get("itemType") or "").lower()
+        artists = value.get("artists") or value.get("artistNames") or value.get("artist")
+        if isinstance(artists, str):
+            artist_names = [artists]
+        elif isinstance(artists, list):
+            artist_names = [
+                artist if isinstance(artist, str) else artist.get("name", "")
+                for artist in artists if isinstance(artist, (str, dict))
+            ]
+        else:
             artist_names = []
-            for artist in artists:
-                if isinstance(artist, str):
-                    artist_names.append(artist)
-                elif isinstance(artist, dict) and isinstance(artist.get("name"), str):
-                    artist_names.append(artist["name"])
-            if artist_names and isinstance(uri, str) and ("track" in uri or len(uri) == 22):
-                key = uri.rsplit(":", 1)[-1]
-                if key not in found:
-                    found[key] = {"title": name, "artist": ", ".join(artist_names)}
+
+        # Spotify embed track rows commonly use {title, subtitle, uri}; the
+        # subtitle contains the artist names even when no artists array exists.
+        subtitle = value.get("subtitle")
+        if not artist_names and isinstance(subtitle, str):
+            artist_names = [part.strip() for part in subtitle.split(",") if part.strip()]
+        if not artist_names and isinstance(value.get("artists"), dict):
+            artist_names = [value["artists"].get("name", "")]
+
+        is_track = (
+            (isinstance(uri, str) and ("spotify:track:" in uri or "/track/" in uri))
+            or kind == "track"
+            or isinstance(value.get("trackUri"), str)
+        )
+        if (
+            isinstance(name, str) and name.strip()
+            and artist_names and any(isinstance(a, str) and a.strip() for a in artist_names)
+            and isinstance(uri, str) and is_track
+        ):
+            key = uri.rsplit(":", 1)[-1].rsplit("/", 1)[-1]
+            artists_text = ", ".join(a.strip() for a in artist_names if isinstance(a, str) and a.strip())
+            if key and key not in found:
+                found[key] = {"title": name.strip(), "artist": artists_text}
         for child in value.values():
             _find_spotify_tracks(child, found)
     elif isinstance(value, list):
@@ -249,7 +270,7 @@ def _find_spotify_tracks(value, found):
 
 @app.get("/api/spotify-playlist")
 def spotify_playlist_tracks():
-    """Best-effort public Spotify playlist page parser; no Spotify API credentials."""
+    """Read public Spotify playlist metadata from its page or embed page."""
     import json
     import re
     import requests
@@ -265,39 +286,46 @@ def spotify_playlist_tracks():
         if not match:
             return jsonify({"error": "That link is not a Spotify playlist URL."}), 400
         playlist_id = match.group(1)
-        page_url = f"https://open.spotify.com/playlist/{playlist_id}"
-        response = requests.get(page_url, headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/json",
             "Accept-Language": "en-US,en;q=0.9",
-        }, timeout=15)
-        if response.status_code != 200:
-            return jsonify({"error": "Spotify wouldn't provide this playlist page. Make sure the playlist is public and try again."}), 502
-
-        html = response.text
+        }
         found = {}
-        # Prefer structured JSON blocks, which can contain the complete public track list.
-        for block in re.findall(r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, re.I | re.S):
-            try:
-                _find_spotify_tracks(json.loads(unescape(block)), found)
-            except (ValueError, TypeError):
+        # Spotify's embed page often exposes a different, smaller initial-state
+        # payload than the normal page, so try both public endpoints.
+        for page_url in (
+            f"https://open.spotify.com/embed/playlist/{playlist_id}",
+            f"https://open.spotify.com/playlist/{playlist_id}",
+        ):
+            response = requests.get(page_url, headers=headers, timeout=15)
+            if response.status_code != 200:
                 continue
-        for block in re.findall(r'<script[^>]+id=["\']__NEXT_DATA__["\'][^>]*>(.*?)</script>', html, re.I | re.S):
-            try:
-                _find_spotify_tracks(json.loads(unescape(block)), found)
-            except (ValueError, TypeError):
-                continue
-        # Some Spotify pages expose their initial state in a serialized JSON script.
-        for block in re.findall(r'<script[^>]*>(\s*\{.*?\}\s*)</script>', html, re.S):
-            if "trackList" not in block and "tracklist" not in block and "trackUri" not in block:
-                continue
-            try:
-                _find_spotify_tracks(json.loads(unescape(block)), found)
-            except (ValueError, TypeError):
-                continue
+            html = response.text
+            blocks = re.findall(
+                r'<script[^>]+type=["\\']application/ld\\+json["\\'][^>]*>(.*?)</script>',
+                html, re.I | re.S
+            )
+            blocks += re.findall(
+                r'<script[^>]+id=["\\']__NEXT_DATA__["\\'][^>]*>(.*?)</script>',
+                html, re.I | re.S
+            )
+            # Also inspect script bodies containing common serialized track state.
+            blocks += [
+                block for block in re.findall(r'<script[^>]*>(.*?)</script>', html, re.I | re.S)
+                if any(token in block.lower() for token in ("tracklist", "trackuri", "spotify:track:"))
+            ]
+            for block in blocks:
+                try:
+                    _find_spotify_tracks(json.loads(unescape(block)), found)
+                except (ValueError, TypeError):
+                    continue
+            if found:
+                break
 
         tracks = list(found.values())
         if not tracks:
-            return jsonify({"error": "Spotify's public page didn't expose its track list. This playlist may require login, or Spotify may have changed its page format. No songs were imported."}), 502
+            return jsonify({"error": "Spotify did not expose track details from its public page or embed. Make sure the playlist is public. If it still fails, use a Spotify playlist export (CSV/text) so GHOST can import the track names directly."}), 502
         return jsonify({"playlistId": playlist_id, "tracks": tracks, "count": len(tracks)})
     except requests.RequestException:
         app.logger.exception("Spotify playlist page request failed")
