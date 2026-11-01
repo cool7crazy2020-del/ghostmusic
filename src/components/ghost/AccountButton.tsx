@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LogIn, LogOut, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authConfigured, getSession, signIn, signOut, signUp } from "@/lib/ghost-auth";
@@ -11,8 +11,12 @@ export function AccountButton() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  if (typeof window !== "undefined") window.onstorage = () => setSession(getSession());
-  if (typeof window !== "undefined") window.addEventListener("ghost-auth-change", ((event: Event) => setSession((event as CustomEvent).detail)) as EventListener, { once: true });
+  useEffect(() => {
+    const sync = (event?: Event) => setSession(event ? (event as CustomEvent).detail : getSession());
+    window.addEventListener("ghost-auth-change", sync);
+    window.addEventListener("storage", sync);
+    return () => { window.removeEventListener("ghost-auth-change", sync); window.removeEventListener("storage", sync); };
+  }, []);
   async function submit(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setMessage("");
     try {
