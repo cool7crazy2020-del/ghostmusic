@@ -221,6 +221,92 @@ def resolve_audio():
         return jsonify({"error": message}), 502
 
 
+
+def _find_spotify_tracks(value, found):
+    """Walk Spotify's public page JSON for track objects without using Spotify's API."""
+    if isinstance(value, dict):
+        # Spotify's embedded page data has appeared in a few shapes over time.
+        name = value.get("name") or value.get("title")
+        artists = value.get("artists") or value.get("artistNames")
+        uri = value.get("uri") or value.get("id")
+        if isinstance(name, str) and isinstance(artists, list) and artists:
+            artist_names = []
+            for artist in artists:
+                if isinstance(artist, str):
+                    artist_names.append(artist)
+                elif isinstance(artist, dict) and isinstance(artist.get("name"), str):
+                    artist_names.append(artist["name"])
+            if artist_names and isinstance(uri, str) and ("track" in uri or len(uri) == 22):
+                key = uri.rsplit(":", 1)[-1]
+                if key not in found:
+                    found[key] = {"title": name, "artist": ", ".join(artist_names)}
+        for child in value.values():
+            _find_spotify_tracks(child, found)
+    elif isinstance(value, list):
+        for child in value:
+            _find_spotify_tracks(child, found)
+
+
+@app.get("/api/spotify-playlist")
+def spotify_playlist_tracks():
+    """Best-effort public Spotify playlist page parser; no Spotify API credentials."""
+    import json
+    import re
+    import requests
+    from html import unescape
+    from urllib.parse import urlparse
+
+    raw_url = request.args.get("url", "").strip()
+    try:
+        parsed = urlparse(raw_url)
+        if parsed.scheme != "https" or parsed.hostname not in {"open.spotify.com", "www.open.spotify.com"}:
+            return jsonify({"error": "Paste a public Spotify playlist URL."}), 400
+        match = re.fullmatch(r"/playlist/([A-Za-z0-9]+)", parsed.path.rstrip("/"))
+        if not match:
+            return jsonify({"error": "That link is not a Spotify playlist URL."}), 400
+        playlist_id = match.group(1)
+        page_url = f"https://open.spotify.com/playlist/{playlist_id}"
+        response = requests.get(page_url, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.9",
+        }, timeout=15)
+        if response.status_code != 200:
+            return jsonify({"error": "Spotify wouldn't provide this playlist page. Make sure the playlist is public and try again."}), 502
+
+        html = response.text
+        found = {}
+        # Prefer structured JSON blocks, which can contain the complete public track list.
+        for block in re.findall(r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, re.I | re.S):
+            try:
+                _find_spotify_tracks(json.loads(unescape(block)), found)
+            except (ValueError, TypeError):
+                continue
+        for block in re.findall(r'<script[^>]+id=["\']__NEXT_DATA__["\'][^>]*>(.*?)</script>', html, re.I | re.S):
+            try:
+                _find_spotify_tracks(json.loads(unescape(block)), found)
+            except (ValueError, TypeError):
+                continue
+        # Some Spotify pages expose their initial state in a serialized JSON script.
+        for block in re.findall(r'<script[^>]*>(\s*\{.*?\}\s*)</script>', html, re.S):
+            if "trackList" not in block and "tracklist" not in block and "trackUri" not in block:
+                continue
+            try:
+                _find_spotify_tracks(json.loads(unescape(block)), found)
+            except (ValueError, TypeError):
+                continue
+
+        tracks = list(found.values())
+        if not tracks:
+            return jsonify({"error": "Spotify's public page didn't expose its track list. This playlist may require login, or Spotify may have changed its page format. No songs were imported."}), 502
+        return jsonify({"playlistId": playlist_id, "tracks": tracks, "count": len(tracks)})
+    except requests.RequestException:
+        app.logger.exception("Spotify playlist page request failed")
+        return jsonify({"error": "Couldn't reach Spotify to read this playlist. Try again later."}), 502
+    except Exception:
+        app.logger.exception("Spotify playlist import failed")
+        return jsonify({"error": "Couldn't read that Spotify playlist."}), 502
+
+
 @app.get("/")
 def health():
     return jsonify({"status": "GHOST Music search service is running"})
