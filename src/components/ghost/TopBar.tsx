@@ -1,5 +1,6 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Menu, Search, X } from "lucide-react";
+import { AccountButton } from "./AccountButton";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,7 @@ export function TopBar() {
               </button>
             )}
           </form>
+          <AccountButton />
         </div>
         {!storageAvailable && (
           <div role="status" className="border-t border-warning/30 bg-warning/10 px-4 py-1.5 text-center text-xs text-warning">
