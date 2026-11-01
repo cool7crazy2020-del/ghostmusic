@@ -48,6 +48,7 @@ function Playlists() {
   const { playlists, ready, createPlaylist, addToPlaylist } = useLibrary();
   const [open, setOpen] = useState(false);
   const [spotifyUrl, setSpotifyUrl] = useState("");
+  const [pastedTrackList, setPastedTrackList] = useState("");
   const [spotifyEmbed, setSpotifyEmbed] = useState<string | null>(null);
   const [spotifyError, setSpotifyError] = useState("");
   const [spotifyOpen, setSpotifyOpen] = useState(false);
@@ -205,6 +206,7 @@ function Playlists() {
                 <Button type="submit" variant="glow">Open playlist</Button>
               </form>
               {spotifyError && <p role="alert" className="text-sm text-destructive">{spotifyError}</p>}
+              <details className="rounded-lg border border-border p-3"><summary className="cursor-pointer text-sm font-medium">Fallback: paste track list</summary><p className="mt-2 text-xs text-muted-foreground">Paste one song per line as Song Title — Artist.</p><textarea value={pastedTrackList} onChange={event => setPastedTrackList(event.target.value)} rows={5} className="mt-3 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" aria-label="Paste playlist track list" /></details>
               {spotifyEmbed ? (
                 <iframe title="Spotify playlist player" src={spotifyEmbed} width="100%" height="500" style={{ border: 0, borderRadius: 12 }} allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" />
               ) : (
