@@ -8,6 +8,8 @@ export interface Playlist {
   name: string;
   createdAt: number;
   tracks: Track[];
+  /** Optional user-selected cover image stored as a data URL in this browser. */
+  image?: string | null;
 }
 
 export interface HistoryEntry {
@@ -28,6 +30,7 @@ export type LibraryAction =
   | { type: "toggleLike"; track: Track }
   | { type: "createPlaylist"; id: string; name: string; now: number; track?: Track }
   | { type: "renamePlaylist"; id: string; name: string }
+  | { type: "setPlaylistImage"; id: string; image: string | null }
   | { type: "deletePlaylist"; id: string }
   | { type: "addToPlaylist"; id: string; track: Track }
   | { type: "removeFromPlaylist"; id: string; trackId: string }
@@ -69,6 +72,8 @@ export function libraryReducer(state: LibraryState, action: LibraryAction): Libr
         playlists: state.playlists.map((p) => (p.id === action.id ? { ...p, name } : p)),
       };
     }
+    case "setPlaylistImage":
+      return { ...state, playlists: state.playlists.map((p) => p.id === action.id ? { ...p, image: action.image } : p) };
     case "deletePlaylist":
       return { ...state, playlists: state.playlists.filter((p) => p.id !== action.id) };
     case "addToPlaylist":
@@ -116,6 +121,7 @@ export function parseStoredLibrary(raw: string | null): LibraryState {
               name: p.name,
               createdAt: typeof p.createdAt === "number" ? p.createdAt : 0,
               tracks: Array.isArray(p.tracks) ? p.tracks.filter(isTrack) : [],
+              image: typeof p.image === "string" ? p.image : null,
             }))
         : [],
       history: Array.isArray(data.history)
