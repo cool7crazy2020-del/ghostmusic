@@ -49,6 +49,8 @@ function Playlists() {
   const [open, setOpen] = useState(false);
   const [spotifyUrl, setSpotifyUrl] = useState("");
   const [pastedTrackList, setPastedTrackList] = useState("");
+  const [trackFileName, setTrackFileName] = useState("");
+  const [trackFileError, setTrackFileError] = useState("");
   const [spotifyEmbed, setSpotifyEmbed] = useState<string | null>(null);
   const [spotifyError, setSpotifyError] = useState("");
   const [spotifyOpen, setSpotifyOpen] = useState(false);
@@ -218,7 +220,46 @@ function Playlists() {
                 <Button type="submit" variant="glow">Open playlist</Button>
               </form>
               {spotifyError && <p role="alert" className="text-sm text-destructive">{spotifyError}</p>}
-              <details className="rounded-lg border border-border p-3"><summary className="cursor-pointer text-sm font-medium">Fallback: paste track list</summary><p className="mt-2 text-xs text-muted-foreground">Paste one song per line as Song Title — Artist.</p><textarea value={pastedTrackList} onChange={event => setPastedTrackList(event.target.value)} rows={5} className="mt-3 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" aria-label="Paste playlist track list" /></details>
+              <details className="rounded-lg border border-border p-3" open>
+                <summary className="cursor-pointer text-sm font-medium">Fallback: upload playlist export (no copying song names)</summary>
+                <p className="mt-2 text-xs text-muted-foreground">If Spotify blocks automatic reading, export the playlist as a CSV file (for example with Exportify), then upload it here. GHOST reads the song and artist columns locally.</p>
+                <input type="file" accept=".csv,.txt,.tsv,text/csv,text/plain,text/tab-separated-values" aria-label="Upload playlist CSV or text file" className="mt-3 block w-full text-xs" onChange={async event => {
+                  const file = event.currentTarget.files?.[0];
+                  setTrackFileError("");
+                  if (!file) return;
+                  if (file.size > 2 * 1024 * 1024) { setTrackFileError("File must be under 2 MB."); return; }
+                  try {
+                    const rows = (await file.text()).split(/\r?\n/).filter(line => line.trim());
+                    const parseRow = (row: string) => {
+                      const cells: string[] = []; let value = ""; let quoted = false;
+                      for (let i = 0; i < row.length; i++) {
+                        const ch = row[i];
+                        if (ch === '"' && quoted && row[i + 1] === '"') { value += '"'; i++; }
+                        else if (ch === '"') quoted = !quoted;
+                        else if ((ch === "," || ch === "\t") && !quoted) { cells.push(value.trim()); value = ""; }
+                        else value += ch;
+                      }
+                      cells.push(value.trim()); return cells;
+                    };
+                    if (rows.length < 2) throw new Error("That file has no track rows.");
+                    const headers = parseRow(rows[0]).map(v => v.toLowerCase().replace(/[^a-z0-9]/g, ""));
+                    const ti = headers.findIndex(v => ["trackname","track","song","songname","title","name"].includes(v));
+                    const ai = headers.findIndex(v => ["artistname","artist","artists","trackartist","artistnames"].includes(v));
+                    if (ti < 0) throw new Error("Could not find a track-name column in this file.");
+                    const tracks = rows.slice(1).map(row => parseRow(row)).map(row => ({title: row[ti] || "", artist: ai >= 0 ? row[ai] || "" : ""})).filter(t => t.title);
+                    if (!tracks.length) throw new Error("No track names found in that file.");
+                    setPastedTrackList(tracks.map(t => t.title + " — " + t.artist).join("\n"));
+                    setTrackFileName(file.name + " (" + tracks.length + " tracks loaded)");
+                    setSpotifyError("");
+                  } catch (error) {
+                    setTrackFileError(error instanceof Error ? error.message : "Could not read this file.");
+                    setTrackFileName("");
+                  }
+                }} />
+                {trackFileName && <p className="mt-2 text-xs text-muted-foreground">{trackFileName}</p>}
+                {trackFileError && <p role="alert" className="mt-2 text-xs text-destructive">{trackFileError}</p>}
+                <details className="mt-3"><summary className="cursor-pointer text-xs text-muted-foreground">Or paste a track list manually</summary><p className="mt-2 text-xs text-muted-foreground">One song per line as Song Title — Artist.</p><textarea value={pastedTrackList} onChange={event => { setPastedTrackList(event.target.value); setTrackFileName(""); }} rows={4} className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" aria-label="Paste playlist track list" /></details>
+              </details>
               {spotifyEmbed ? (
                 <iframe title="Spotify playlist player" src={spotifyEmbed} width="100%" height="500" style={{ border: 0, borderRadius: 12 }} allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" />
               ) : (
@@ -232,13 +273,13 @@ function Playlists() {
                   <Button type="button" variant={importMode === "existing" ? "glow" : "outline"} disabled={importing} onClick={() => setImportMode("existing")}>Add to existing</Button>
                 </div>
                 {importMode === "existing" && <select value={targetPlaylistId} onChange={(event) => setTargetPlaylistId(event.target.value)} disabled={importing} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"><option value="">Choose a GHOST playlist…</option>{playlists.map((playlist) => <option key={playlist.id} value={playlist.id}>{playlist.name} ({playlist.tracks.length} songs)</option>)}</select>}
-                <Button type="button" variant="glow" disabled={importing || !spotifyUrl.trim()} onClick={importSpotifyPlaylist}>{importing ? <><LoaderCircle className="size-4 animate-spin" /> Importing {importProgress.done}/{importProgress.total || "…"}</> : <><Check className="size-4" /> Import songs into GHOST</>}</Button>
+                <Button type="button" variant="glow" disabled={importing || (!spotifyUrl.trim() && !pastedTrackList.trim())} onClick={importSpotifyPlaylist}>{importing ? <><LoaderCircle className="size-4 animate-spin" /> Importing {importProgress.done}/{importProgress.total || "…"}</> : <><Check className="size-4" /> Import songs into GHOST</>}</Button>
                 {importing && importProgress.total > 0 && <div className="space-y-1"><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{ width: (Math.round(importProgress.done / importProgress.total * 100)) + "%" }} /></div><p className="text-xs text-muted-foreground">{importProgress.added} matched · {importProgress.done} of {importProgress.total} checked</p></div>}
                 {importComplete && <p className="text-sm text-foreground">Import finished: {importProgress.added} songs matched. {importUnmatched.length} couldn't be matched.</p>}
                 {importUnmatched.length > 0 && <details className="text-sm"><summary className="cursor-pointer font-medium">Show unmatched songs ({importUnmatched.length})</summary><ul className="mt-2 max-h-40 space-y-1 overflow-y-auto text-muted-foreground">{importUnmatched.map((song, index) => <li key={song + index}>{song}</li>)}</ul></details>}
               </div>
               {spotifyEmbed && <details className="text-sm text-muted-foreground"><summary className="cursor-pointer">Preview Spotify playlist</summary><iframe title="Spotify playlist preview" src={spotifyEmbed} width="100%" height="350" style={{ border: 0, borderRadius: 12, marginTop: 12 }} allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" /></details>}
-              <p className="text-xs leading-relaxed text-muted-foreground">GHOST reads the public Spotify playlist page without Spotify API credentials, then matches songs to YouTube. Spotify may block track-list access for some playlists. Matching is best-effort; duplicate YouTube tracks are skipped.</p>
+              <p className="text-xs leading-relaxed text-muted-foreground">GHOST first tries the public Spotify page. If Spotify blocks it, upload a playlist CSV export instead—no song-by-song copying. Matching to YouTube is best-effort and duplicates are skipped.</p>
             </div>
           </div>
         </div>
