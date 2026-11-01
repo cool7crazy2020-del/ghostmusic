@@ -23,7 +23,19 @@ async function authRequest(path: string, body: Record<string, unknown>): Promise
   setSession(session); return session;
 }
 export function signIn(email: string, password: string) { return authRequest("token?grant_type=password", { email, password }); }
-export function signUp(email: string, password: string) { return authRequest("signup", { email, password }); }
+export async function signUp(email: string, password: string): Promise<GhostSession | null> {
+  if (!authConfigured) throw new Error("Sign-in is not connected yet. The app owner needs to add Supabase URL and anon key in deployment settings.");
+  const response = await fetch(supabaseUrl + "/auth/v1/signup", {
+    method: "POST", headers: { "Content-Type": "application/json", apikey: supabaseKey! }, body: JSON.stringify({ email, password }),
+  });
+  const data = await response.json().catch(() => ({})) as Record<string, unknown>;
+  if (!response.ok) throw new Error(typeof data.msg === "string" ? data.msg : typeof data.message === "string" ? data.message : typeof data.error_description === "string" ? data.error_description : "Could not create account. Check the email and password.");
+  if (typeof data.access_token !== "string") return null;
+  const user = data.user as GhostSession["user"] | undefined;
+  if (!user?.id) throw new Error("Account created, but the sign-in response was incomplete.");
+  const session: GhostSession = { access_token: data.access_token, refresh_token: typeof data.refresh_token === "string" ? data.refresh_token : undefined, expires_at: typeof data.expires_in === "number" ? Date.now() + data.expires_in * 1000 : undefined, user };
+  setSession(session); return session;
+}
 export function signOut() { setSession(null); }
 export async function cloudRequest(path: string, method: string, body?: unknown) {
   const session = getSession();
