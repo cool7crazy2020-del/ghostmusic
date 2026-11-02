@@ -1,48 +1,42 @@
-import type { MusicSource } from "./types";
+import { ALBUMS, DEMO_AUDIO, DEMO_SOURCE_ID, GENRES, TRACKS } from "./demo-catalog";
+import type { MusicSource, SearchResults } from "./types";
 
-const AUDIO_API = "https://ghostmusic-s8vd.onrender.com/api/resolve-audio";
+function matches(text: string, q: string) {
+  return text.toLowerCase().includes(q);
+}
 
-/** Provider adapter for the existing backend audio resolver. */
+/** The built-in sample catalog. Only tracks with an entry in DEMO_AUDIO have sound. */
 export const demoSource: MusicSource = {
-  id: "ghost-audio",
-  name: "GHOST Music",
-  isDemo: false,
-  description: "Search and playback through the configured audio backend.",
-  async getFeatured() { return { tracks: [], albums: [] }; },
-  async getGenres() { return []; },
-  async getByGenre() { return { tracks: [], albums: [] }; },
-  async search() { return { tracks: [], albums: [] }; },
-  async getAlbum() { return null; },
-  async resolveStream(track) {
-    if (!track.sourceUrl) {
-      throw new Error("This track has no source URL attached.");
-    }
-
-    let response: Response;
-    try {
-      response = await fetch(AUDIO_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: track.sourceUrl }),
-      });
-    } catch {
-      throw new Error("Could not reach the GHOST audio backend. Check whether the Render service is awake.");
-    }
-
-    const result = (await response.json().catch(() => ({}))) as {
-      url?: unknown;
-      error?: unknown;
+  id: DEMO_SOURCE_ID,
+  name: "GHOST demo catalog",
+  isDemo: true,
+  description: "Fictional sample artists and albums with a few short original audio loops.",
+  async getFeatured() {
+    return { tracks: TRACKS.filter((t) => t.playable).concat(TRACKS.filter((t) => !t.playable).slice(0, 3)), albums: ALBUMS };
+  },
+  async getGenres() {
+    return GENRES;
+  },
+  async getByGenre(genreId): Promise<SearchResults> {
+    return {
+      tracks: TRACKS.filter((t) => t.genre === genreId),
+      albums: ALBUMS.filter((a) => a.genre === genreId),
     };
-
-    if (!response.ok) {
-      const message = typeof result.error === "string" ? result.error : `Audio backend returned HTTP ${response.status}.`;
-      throw new Error(message);
-    }
-
-    if (typeof result.url !== "string" || !result.url.startsWith("https://")) {
-      throw new Error("The backend responded but did not return a playable HTTPS audio URL.");
-    }
-
-    return result.url;
+  },
+  async search(query): Promise<SearchResults> {
+    const q = query.trim().toLowerCase();
+    if (!q) return { tracks: [], albums: [] };
+    return {
+      tracks: TRACKS.filter((t) => matches(t.title, q) || matches(t.artist, q) || matches(t.albumTitle, q)),
+      albums: ALBUMS.filter((a) => matches(a.title, q) || matches(a.artist, q)),
+    };
+  },
+  async getAlbum(albumId) {
+    const album = ALBUMS.find((a) => a.id === albumId);
+    if (!album) return null;
+    return { album, tracks: album.trackIds.map((id) => TRACKS.find((t) => t.id === id)).filter((t) => !!t) };
+  },
+  async resolveStream(track) {
+    return DEMO_AUDIO[track.id] ?? null;
   },
 };
