@@ -25,8 +25,14 @@ export interface Track {
   playable: boolean;
   /** Which source this track came from (used to label it in the UI). */
   sourceId: string;
-  /** Optional canonical page URL used by a provider adapter to resolve playback. */
-  sourceUrl?: string;
+  /** Optional canonical page URL (e.g. the YouTube watch page). */
+  sourceUrl?: string | undefined;
+  /** YouTube video id when the track plays through the official YouTube embed. */
+  youtubeId?: string | undefined;
+  /** YouTube channel id, used to link to the artist/channel page. */
+  channelId?: string | undefined;
+  /** Remote cover/thumbnail image URL. */
+  thumbnail?: string | undefined;
 }
 
 export interface Album {

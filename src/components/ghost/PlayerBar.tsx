@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ListMusic, Loader2, Pause, Play, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -10,48 +10,10 @@ import { cn } from "@/lib/utils";
 import { Artwork } from "./Artwork";
 import { LikeButton } from "./LikeButton";
 import { usePlayer } from "./player-context";
-
-type YTPlayer = { playVideo: () => void; pauseVideo: () => void; loadVideoById: (id: string) => void; cueVideoById: (id: string) => void; seekTo: (seconds: number, allowSeekAhead: boolean) => void; setVolume: (volume: number) => void; mute: () => void; unMute: () => void; getCurrentTime: () => number; getDuration: () => number; getPlayerState: () => number; destroy: () => void };
-declare global { interface Window { YT?: { Player: new (element: HTMLElement, options: Record<string, unknown>) => YTPlayer; PlayerState: { ENDED: number }; }; onYouTubeIframeAPIReady?: () => void; } }
-
-function YouTubeBridge({ videoId, onReady }: { videoId: string | null; onReady: (player: YTPlayer | null) => void }) {
-  const hostRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<YTPlayer | null>(null);
-  useEffect(() => {
-    if (!videoId || !hostRef.current) { onReady(null); return; }
-    let cancelled = false;
-    const create = () => {
-      if (cancelled || !hostRef.current || !window.YT?.Player) return;
-      playerRef.current?.destroy();
-      playerRef.current = new window.YT.Player(hostRef.current, {
-        width: 200, height: 200, videoId,
-        playerVars: { playsinline: 1, origin: window.location.origin, rel: 0 },
-        events: { onReady: (event: { target: YTPlayer }) => { if (!cancelled) onReady(event.target); }, onStateChange: () => {} },
-      });
-    };
-    if (window.YT?.Player) create();
-    else {
-      const existing = document.querySelector<HTMLScriptElement>('script[src="https://www.youtube.com/iframe_api"]');
-      if (!existing) { const script = document.createElement("script"); script.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(script); }
-      const previous = window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady = () => { previous?.(); create(); };
-    }
-    return () => {
-      cancelled = true;
-      onReady(null);
-      playerRef.current?.destroy();
-      playerRef.current = null;
-    };
-  }, [videoId, onReady]);
-  if (!videoId) return null;
-  return <div className="fixed bottom-[6.5rem] right-4 z-50 overflow-hidden rounded-xl border border-border bg-black shadow-2xl"><div className="px-3 py-1.5 text-[11px] font-medium text-white/80"> GHOST MUSIC </div><div ref={hostRef} className="h-[1px] w-[1px]" /></div>;
-}
+import { YouTubePlayerCard } from "./YouTubePlayerCard";
 
 export function PlayerBar() {
   const p = usePlayer();
-  const attachYouTubePlayer = p.attachYouTubePlayer;
-  const youtubeVideoId = p.current?.sourceUrl ? (() => { try { const u = new URL(p.current.sourceUrl!); return u.searchParams.get("v") || (u.hostname.includes("youtu.be") ? u.pathname.slice(1) : null); } catch { return null; } })() : null;
-  const onYouTubeReady = useCallback((player: YTPlayer | null) => attachYouTubePlayer(player), [attachYouTubePlayer]);
   const [scrub, setScrub] = useState<number | null>(null);
   const track = p.current;
   const unavailable = p.status === "unavailable";
@@ -71,14 +33,14 @@ export function PlayerBar() {
   const statusText = !track
     ? "Pick a track to start listening"
     : unavailable
-      ? "Audio unavailable for this track"
+      ? (p.unavailableReason ?? "Audio unavailable for this track")
       : p.status === "error"
         ? "Couldn't load audio"
         : null;
 
   return (
     <>
-    <YouTubeBridge videoId={youtubeVideoId} onReady={onYouTubeReady} />
+    <YouTubePlayerCard />
     <footer
       aria-label="Player"
       className="relative z-40 border-t border-border bg-surface/95 backdrop-blur-xl"
@@ -96,16 +58,23 @@ export function PlayerBar() {
         <div className="flex min-w-0 items-center gap-3">
           {track ? (
             <>
-              <Artwork art={track.art} size="sm" className="size-12 shadow-lg md:size-14" />
+              <Artwork art={track.art} image={track.thumbnail} size="sm" className="size-12 shadow-lg md:size-14" />
               <div className="min-w-0">
-                <Link
-                  to="/album/$albumId"
-                  params={{ albumId: track.albumId }}
-                  className="block truncate text-sm font-semibold text-foreground hover:underline"
-                >
-                  {track.title}
-                </Link>
-                <div className="truncate text-xs text-muted-foreground">{track.artist}</div>
+                {p.currentYouTubeId ? (
+                  <div className="truncate text-sm font-semibold text-foreground">{track.title}</div>
+                ) : (
+                  <Link
+                    to="/album/$albumId"
+                    params={{ albumId: track.albumId }}
+                    className="block truncate text-sm font-semibold text-foreground hover:underline"
+                  >
+                    {track.title}
+                  </Link>
+                )}
+                <div className="truncate text-xs text-muted-foreground">
+                  {track.artist}
+                  {p.currentYouTubeId && <span className="text-primary"> · via YouTube</span>}
+                </div>
                 {unavailable && (
                   <div className="mt-0.5 truncate text-[11px] font-medium text-warning md:hidden">
                     Audio unavailable

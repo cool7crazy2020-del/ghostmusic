@@ -97,13 +97,13 @@ export function TrackList({ tracks, playlistId, showAlbum = true, meta, label }:
             </div>
 
             <div className="flex min-w-0 items-center gap-3">
-              <Artwork art={track.art} size="sm" className="size-10" />
+              <Artwork art={track.art} image={track.thumbnail} size="sm" className="size-10" />
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className={cn("truncate font-medium", isCurrent ? "text-primary" : "text-foreground")}>
                     {track.title}
                   </span>
-                  <AvailabilityBadge playable={track.playable} />
+                  <AvailabilityBadge track={track} />
                 </div>
                 <div className="truncate text-sm text-muted-foreground">
                   {track.artist}
@@ -114,6 +114,9 @@ export function TrackList({ tracks, playlistId, showAlbum = true, meta, label }:
 
             {showAlbum && (
               <div className="hidden min-w-0 sm:block">
+                {track.youtubeId || track.sourceId !== "ghost-demo" ? (
+                  <span className="truncate text-sm text-muted-foreground">YouTube video</span>
+                ) : (
                 <Link
                   to="/album/$albumId"
                   params={{ albumId: track.albumId }}
@@ -122,6 +125,7 @@ export function TrackList({ tracks, playlistId, showAlbum = true, meta, label }:
                 >
                   {track.albumTitle}
                 </Link>
+                )}
               </div>
             )}
 

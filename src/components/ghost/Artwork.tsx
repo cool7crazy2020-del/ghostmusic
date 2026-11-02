@@ -1,16 +1,32 @@
 import { Ghost } from "lucide-react";
+import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 
 interface ArtworkProps {
   art: number;
+  /** Remote cover image (e.g. a YouTube thumbnail). Falls back to the gradient placeholder. */
+  image?: string | undefined;
   label?: string;
   className?: string;
   size?: "sm" | "md" | "lg";
 }
 
-/** Gradient artwork placeholder. Real providers can swap this for cover image URLs. */
-export function Artwork({ art, label, className, size = "md" }: ArtworkProps) {
+/** Cover image, or a gradient placeholder when there is none. */
+export function Artwork({ art, image, label, className, size = "md" }: ArtworkProps) {
+  const [failed, setFailed] = useState(false);
+  if (image && !failed) {
+    return (
+      <img
+        src={image}
+        alt={label ?? ""}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+        className={cn("shrink-0 rounded-md bg-surface-raised object-cover", className)}
+      />
+    );
+  }
   return (
     <div
       className={cn(
