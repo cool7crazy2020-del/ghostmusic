@@ -16,6 +16,8 @@ import { Route as LibraryRouteImport } from './routes/library'
 import { Route as LikedRouteImport } from './routes/liked'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as AlbumAlbumIdRouteImport } from './routes/album.$albumId'
+import { Route as ApiSearchRouteImport } from './routes/api.search'
+import { Route as ArtistArtistIdRouteImport } from './routes/artist.$artistId'
 import { Route as PlaylistsIndexRouteImport } from './routes/playlists.index'
 import { Route as PlaylistsPlaylistIdRouteImport } from './routes/playlists.$playlistId'
 
@@ -54,6 +56,16 @@ const AlbumAlbumIdRoute = AlbumAlbumIdRouteImport.update({
   path: '/album/$albumId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSearchRoute = ApiSearchRouteImport.update({
+  id: '/api/search',
+  path: '/api/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArtistArtistIdRoute = ArtistArtistIdRouteImport.update({
+  id: '/artist/$artistId',
+  path: '/artist/$artistId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlaylistsIndexRoute = PlaylistsIndexRouteImport.update({
   id: '/playlists/',
   path: '/playlists/',
@@ -73,6 +85,8 @@ export interface FileRoutesByFullPath {
   '/liked': typeof LikedRoute
   '/search': typeof SearchRoute
   '/album/$albumId': typeof AlbumAlbumIdRoute
+  '/api/search': typeof ApiSearchRoute
+  '/artist/$artistId': typeof ArtistArtistIdRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/playlists/': typeof PlaylistsIndexRoute
 }
@@ -84,6 +98,8 @@ export interface FileRoutesByTo {
   '/liked': typeof LikedRoute
   '/search': typeof SearchRoute
   '/album/$albumId': typeof AlbumAlbumIdRoute
+  '/api/search': typeof ApiSearchRoute
+  '/artist/$artistId': typeof ArtistArtistIdRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/playlists': typeof PlaylistsIndexRoute
 }
@@ -96,6 +112,8 @@ export interface FileRoutesById {
   '/liked': typeof LikedRoute
   '/search': typeof SearchRoute
   '/album/$albumId': typeof AlbumAlbumIdRoute
+  '/api/search': typeof ApiSearchRoute
+  '/artist/$artistId': typeof ArtistArtistIdRoute
   '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/playlists/': typeof PlaylistsIndexRoute
 }
@@ -109,6 +127,8 @@ export interface FileRouteTypes {
     | '/liked'
     | '/search'
     | '/album/$albumId'
+    | '/api/search'
+    | '/artist/$artistId'
     | '/playlists/$playlistId'
     | '/playlists/'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +140,8 @@ export interface FileRouteTypes {
     | '/liked'
     | '/search'
     | '/album/$albumId'
+    | '/api/search'
+    | '/artist/$artistId'
     | '/playlists/$playlistId'
     | '/playlists'
   id:
@@ -131,6 +153,8 @@ export interface FileRouteTypes {
     | '/liked'
     | '/search'
     | '/album/$albumId'
+    | '/api/search'
+    | '/artist/$artistId'
     | '/playlists/$playlistId'
     | '/playlists/'
   fileRoutesById: FileRoutesById
@@ -143,6 +167,8 @@ export interface RootRouteChildren {
   LikedRoute: typeof LikedRoute
   SearchRoute: typeof SearchRoute
   AlbumAlbumIdRoute: typeof AlbumAlbumIdRoute
+  ApiSearchRoute: typeof ApiSearchRoute
+  ArtistArtistIdRoute: typeof ArtistArtistIdRoute
   PlaylistsPlaylistIdRoute: typeof PlaylistsPlaylistIdRoute
   PlaylistsIndexRoute: typeof PlaylistsIndexRoute
 }
@@ -198,6 +224,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AlbumAlbumIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/search': {
+      id: '/api/search'
+      path: '/api/search'
+      fullPath: '/api/search'
+      preLoaderRoute: typeof ApiSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/artist/$artistId': {
+      id: '/artist/$artistId'
+      path: '/artist/$artistId'
+      fullPath: '/artist/$artistId'
+      preLoaderRoute: typeof ArtistArtistIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/playlists/': {
       id: '/playlists/'
       path: '/playlists'
@@ -223,6 +263,8 @@ const rootRouteChildren: RootRouteChildren = {
   LikedRoute: LikedRoute,
   SearchRoute: SearchRoute,
   AlbumAlbumIdRoute: AlbumAlbumIdRoute,
+  ApiSearchRoute: ApiSearchRoute,
+  ArtistArtistIdRoute: ArtistArtistIdRoute,
   PlaylistsPlaylistIdRoute: PlaylistsPlaylistIdRoute,
   PlaylistsIndexRoute: PlaylistsIndexRoute,
 }
