@@ -33,8 +33,8 @@ export function AccountButton() {
   }
   return <>
     {session ? <Button variant="outline" size="sm" onClick={() => { signOut(); setSession(null); setMessage("Signed out."); }}><LogOut className="size-4" /> Sign out</Button> : <Button variant="glow" size="sm" onClick={() => { setOpen(true); setMessage(""); }}><LogIn className="size-4" /> Sign in</Button>}
-    {open && <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="ghost-account-title">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-background p-6 shadow-2xl">
+    {open && <div className="fixed inset-0 z-[70] overflow-y-auto bg-black/75 p-3 backdrop-blur-sm sm:p-4" role="dialog" aria-modal="true" aria-labelledby="ghost-account-title">
+      <div className="mx-auto my-2 w-full max-w-md rounded-2xl border border-border bg-background p-4 shadow-2xl sm:my-6 sm:p-6">
         <div className="flex items-start justify-between"><div><div className="mb-3 flex size-11 items-center justify-center rounded-xl bg-primary/15 text-primary"><UserRound /></div><h2 id="ghost-account-title" className="text-2xl font-bold">{mode === "signin" ? "Welcome back" : "Create your account"}</h2><p className="mt-1 text-sm text-muted-foreground">Save your playlists and liked songs across devices.</p></div><Button variant="ghost" size="icon" aria-label="Close" onClick={() => setOpen(false)}><X /></Button></div>
         <form className="mt-6 space-y-3" onSubmit={submit}>
           <label className="block text-sm font-medium">Email<input required type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2.5 outline-none focus:ring-2 focus:ring-ring" placeholder="you@example.com" /></label>
