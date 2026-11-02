@@ -52,14 +52,14 @@ export function QueuePanel() {
                 Now playing
               </p>
               <div className="flex items-center gap-3 rounded-lg bg-accent/50 p-2">
-                <Artwork art={current.art} size="sm" className="size-11" />
+                <Artwork art={current.art} image={current.thumbnail} size="sm" className="size-11" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-sm font-semibold text-primary">{current.title}</span>
                   </div>
                   <div className="truncate text-xs text-muted-foreground">{current.artist}</div>
                 </div>
-                {isPlaying ? <EqualizerIcon /> : <AvailabilityBadge playable={current.playable} />}
+                {isPlaying ? <EqualizerIcon /> : <AvailabilityBadge track={current} />}
               </div>
 
               <div className="mt-6 flex items-center justify-between px-2 pb-2">
@@ -82,12 +82,12 @@ export function QueuePanel() {
                         className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         aria-label={`Play ${t.title} by ${t.artist}`}
                       >
-                        <Artwork art={t.art} size="sm" className="size-10" />
+                        <Artwork art={t.art} image={t.thumbnail} size="sm" className="size-10" />
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-medium text-foreground">{t.title}</div>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <span className="truncate">{t.artist}</span>
-                            {!t.playable && <AvailabilityBadge playable={false} />}
+                            {!t.playable && <AvailabilityBadge track={t} />}
                           </div>
                         </div>
                       </button>
