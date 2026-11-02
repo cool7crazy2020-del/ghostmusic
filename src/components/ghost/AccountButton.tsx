@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { LogIn, LogOut, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authConfigured, getSession, signIn, signOut, signUp } from "@/lib/ghost-auth";
@@ -17,7 +17,7 @@ export function AccountButton() {
     window.addEventListener("storage", sync);
     return () => { window.removeEventListener("ghost-auth-change", sync); window.removeEventListener("storage", sync); };
   }, []);
-  async function submit(event: React.FormEvent) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setMessage("");
     try {
       if (mode === "signin") await signIn(email.trim(), password);
