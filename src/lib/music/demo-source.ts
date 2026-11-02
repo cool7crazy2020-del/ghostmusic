@@ -34,7 +34,7 @@ export const demoSource: MusicSource = {
   async getAlbum(albumId) {
     const album = ALBUMS.find((a) => a.id === albumId);
     if (!album) return null;
-    return { album, tracks: album.trackIds.map((id) => TRACKS.find((t) => t.id === id)).filter((t) => !!t) };
+    return { album, tracks: album.trackIds.map((id) => TRACKS.find((t) => t.id === id)).filter((t): t is (typeof TRACKS)[number] => !!t) };
   },
   async resolveStream(track) {
     return DEMO_AUDIO[track.id] ?? null;
