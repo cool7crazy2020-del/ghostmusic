@@ -12,7 +12,6 @@ import {
   SIZES,
   TEMPLATES,
   formatDuration,
-  pickColumns,
   templateDefaults,
   type FontId,
   type PosterAlbum,
@@ -88,14 +87,10 @@ function PosterStudioPage() {
   const trackColumns = useMemo(() => {
     if (!album) return 1;
     const count = album.tracks.length;
-    const base = Math.max(14, Math.min(27, 27 - Math.max(0, count - 10) * 0.55));
-    return pickColumns(
-      [1, 2, 3].map((columns) => ({
-        columns,
-        fontPx: base * (columns === 1 ? 1 : columns === 2 ? 1.08 : 0.88),
-      })),
-      base,
-    ).columns;
+    // Use multiple columns early enough that a full-length album fits comfortably.
+    if (count >= 24) return 3;
+    if (count >= 10) return 2;
+    return 1;
   }, [album]);
 
   const update = (patch: Partial<PosterSettings>) => setSettings((current) => ({ ...current, ...patch }));
@@ -215,10 +210,10 @@ function PosterStudioPage() {
                 <h3 className="text-sm font-semibold">Live preview</h3>
                 <span className="text-xs text-muted-foreground">{size.label} · 300 DPI target</span>
               </div>
-              <div className="flex justify-center overflow-hidden rounded-2xl border border-border/70 bg-[#09080d] p-3 shadow-inner sm:p-6">
+              <div className="flex justify-center overflow-x-auto overflow-y-visible rounded-2xl border border-border/70 bg-[#09080d] p-3 shadow-inner sm:p-6">
                 <div
                   ref={posterRef}
-                  className="relative flex w-full max-w-[560px] flex-col overflow-hidden p-[5.5%] shadow-2xl"
+                  className="relative flex w-full max-w-[560px] shrink-0 flex-col overflow-hidden p-[5.5%] shadow-2xl"
                   style={{ aspectRatio: `${size.wIn} / ${size.hIn}`, background: settings.bg, color: settings.text, fontFamily: FONTS[settings.font].body }}
                 >
                   <div className="flex items-center justify-between text-[clamp(7px,0.8vw,12px)] font-semibold uppercase tracking-[0.22em]" style={{ color: settings.accent }}>
@@ -273,8 +268,8 @@ function PosterStudioPage() {
                       >
                         {album.tracks.map((track, index) => (
                           <div key={`${track.number}-${index}`} className="flex min-w-0 items-baseline gap-2 border-b pb-[1.2%]" style={{ borderColor: `${settings.text}22`, fontSize: `clamp(8px, ${trackFont / 1200 * 100}vw, 19px)`, lineHeight: settings.spacing + 1.1 }}>
-                            {settings.showNumbers && <span className="shrink-0 tabular-nums" style={{ color: settings.accent }}>{track.number.padStart(2, "0")}</span>}
-                            <span className="min-w-0 flex-1 truncate font-medium">{track.title}</span>
+                            {settings.showNumbers && <span className="shrink-0 tabular-nums" style={{ color: settings.accent }}>{(track.number && track.number !== "0" ? track.number : String(index + 1)).padStart(2, "0")}</span>}
+                            <span className="min-w-0 flex-1 break-words font-medium">{track.title}</span>
                             {settings.showDuration && track.durationSec && <span className="shrink-0 tabular-nums opacity-55">{formatDuration(track.durationSec)}</span>}
                           </div>
                         ))}
