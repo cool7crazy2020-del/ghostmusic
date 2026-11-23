@@ -187,7 +187,7 @@ function PosterStudioPage() {
           </div>
         )}
         {detail.isFetching && <p className="mt-4 text-sm text-muted-foreground">Loading album and tracklist…</p>}
-        {detail.isError && <p role="alert" className="mt-3 text-sm text-destructive">Could not load this album. Choose another result and try again.</p>}
+        {detail.isError && <p role="alert" className="mt-3 text-sm text-destructive">{detail.error instanceof Error ? detail.error.message : "Could not load this album. Choose another result and try again."}</p>}
       </section>
 
       {!album ? (
