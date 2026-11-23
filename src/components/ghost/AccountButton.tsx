@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { LogIn, LogOut, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authConfigured, getSession, signIn, signOut, signUp } from "@/lib/ghost-auth";
@@ -17,6 +18,14 @@ export function AccountButton() {
     window.addEventListener("storage", sync);
     return () => { window.removeEventListener("ghost-auth-change", sync); window.removeEventListener("storage", sync); };
   }, []);
+  useEffect(() => {
+    if (!open) return;
+    const { overflow } = document.body.style;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = overflow; window.removeEventListener("keydown", onKey); };
+  }, [open]);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setMessage("");
     try {
@@ -33,8 +42,8 @@ export function AccountButton() {
   }
   return <>
     {session ? <Button variant="outline" size="sm" onClick={() => { signOut(); setSession(null); setMessage("Signed out."); }}><LogOut className="size-4" /> Sign out</Button> : <Button variant="glow" size="sm" onClick={() => { setOpen(true); setMessage(""); }}><LogIn className="size-4" /> Sign in</Button>}
-    {open && <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-md" onMouseDown={event => { if (event.target === event.currentTarget) setOpen(false); }} role="dialog" aria-modal="true" aria-labelledby="ghost-account-title">
-      <div className="relative my-auto max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-2xl sm:p-6" onMouseDown={event => event.stopPropagation()}>
+    {open && typeof document !== "undefined" && createPortal(<div className="fixed inset-0 z-[99999] flex items-center justify-center overflow-y-auto overflow-x-hidden bg-black/65 p-4 backdrop-blur-[10px]" onMouseDown={event => { if (event.target === event.currentTarget) setOpen(false); }} role="dialog" aria-modal="true" aria-labelledby="ghost-account-title">
+      <div className="relative m-auto max-h-[calc(100dvh-32px)] w-[min(100%,440px)] shrink-0 overflow-y-auto overflow-x-hidden rounded-2xl border border-border bg-background p-5 shadow-2xl sm:p-6" onMouseDown={event => event.stopPropagation()}>
         <div className="flex items-start justify-between"><div><div className="mb-3 flex size-11 items-center justify-center rounded-xl bg-primary/15 text-primary"><UserRound /></div><h2 id="ghost-account-title" className="text-2xl font-bold">{mode === "signin" ? "Welcome back" : "Create your account"}</h2><p className="mt-1 text-sm text-muted-foreground">Save your playlists and liked songs across devices.</p></div><Button variant="ghost" size="icon" aria-label="Close" onClick={() => setOpen(false)}><X /></Button></div>
         <form className="mt-6 space-y-3" onSubmit={submit}>
           <label className="block text-sm font-medium">Email<input required type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2.5 outline-none focus:ring-2 focus:ring-ring" placeholder="you@example.com" /></label>
@@ -43,8 +52,8 @@ export function AccountButton() {
           {message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}
           <Button className="w-full" variant="glow" disabled={busy || !authConfigured}>{busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}</Button>
         </form>
-        <p className="mt-4 text-center text-sm text-muted-foreground">{mode === "signin" ? "New to GHOST? " : "Already have an account? "}<button className="font-semibold text-primary hover:underline" onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setMessage(""); }}>{mode === "signin" ? "Create account" : "Sign in"}</button></p>
+        <p className="mt-4 text-center text-sm text-muted-foreground">{mode === "signin" ? "New to GHOST? " : "Already have an account? "}<button type="button" className="font-semibold text-primary hover:underline" onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setMessage(""); }}>{mode === "signin" ? "Create account" : "Sign in"}</button></p>
       </div>
-    </div>}
+    </div>, document.body)}
   </>;
 }
