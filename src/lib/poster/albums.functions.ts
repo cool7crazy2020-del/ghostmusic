@@ -49,7 +49,7 @@ export const searchCatalogAlbums = createServerFn({ method: "GET" })
   });
 
 export const getCatalogAlbum = createServerFn({ method: "GET" })
-  .inputValidator((d: { id: string }) => z.object({ id: z.string().regex(/^\d+$/) }).parse(d))
+  .inputValidator((d: { id: string }) => z.object({ id: z.string().regex(/^(\d+|deezer:\d+)$/) }).parse(d))
   .handler(async ({ data }): Promise<CatalogAlbum | null> => {
     if (data.id.startsWith("deezer:")) {
       const albumId = data.id.slice("deezer:".length);
