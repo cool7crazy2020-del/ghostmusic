@@ -107,7 +107,7 @@ export const fetchArtworkDataUrl = createServerFn({ method: "GET" })
   .inputValidator((d: { url: string }) => z.object({ url: z.string().url() }).parse(d))
   .handler(async ({ data }) => {
     const u = new URL(data.url);
-    if (u.protocol !== "https:" || !/(^|\.)mzstatic\.com$/.test(u.hostname)) throw new Error("Artwork host not allowed.");
+    if (u.protocol !== "https:" || (!u.hostname.endsWith("mzstatic.com") && !u.hostname.endsWith("dzcdn.net"))) throw new Error("Artwork host not allowed.");
     const res = await fetch(u);
     if (!res.ok) throw new Error(`Artwork unavailable (${res.status}).`);
     const type = res.headers.get("content-type") ?? "image/jpeg";
