@@ -22,6 +22,49 @@ export const Route = createFileRoute("/api/search")({
           );
         }
 
+        const searchType = new URL(request.url).searchParams.get("type");
+
+        if (searchType === "albums") {
+          try {
+            const catalogUrl = new URL("https://itunes.apple.com/search");
+            catalogUrl.search = new URLSearchParams({
+              entity: "album",
+              limit: "24",
+              term: query,
+            }).toString();
+
+            const catalogResponse = await fetch(catalogUrl, {
+              headers: { Accept: "application/json" },
+            });
+            if (!catalogResponse.ok) {
+              return Response.json(
+                { error: `Album catalog request failed (${catalogResponse.status}).` },
+                { status: 502 },
+              );
+            }
+
+            const catalogData = await catalogResponse.json() as { results?: any[] };
+            const results = (catalogData.results ?? [])
+              .filter((item: any) => item.wrapperType === "collection" && item.collectionId)
+              .map((item: any) => ({
+                id: String(item.collectionId),
+                title: item.collectionName ?? "Untitled",
+                artist: item.artistName ?? "",
+                year: item.releaseDate ? new Date(item.releaseDate).getUTCFullYear() : undefined,
+                artworkUrl: item.artworkUrl100?.replace(/\\/\\d+x\\d+bb\\./, "/1500x1500bb."),
+                trackCount: item.trackCount,
+              }));
+
+            return Response.json({ results });
+          } catch (error) {
+            console.error("Poster album catalog search failed:", error);
+            return Response.json(
+              { error: "Could not connect to the album catalog. Please try again." },
+              { status: 502 },
+            );
+          }
+        }
+
         const key = process.env.YOUTUBE_API_KEY;
 
         if (!key) {
