@@ -51,6 +51,33 @@ export const searchCatalogAlbums = createServerFn({ method: "GET" })
 export const getCatalogAlbum = createServerFn({ method: "GET" })
   .inputValidator((d: { id: string }) => z.object({ id: z.string().regex(/^\d+$/) }).parse(d))
   .handler(async ({ data }): Promise<CatalogAlbum | null> => {
+    if (data.id.startsWith("deezer:")) {
+      const albumId = data.id.slice("deezer:".length);
+      if (!/^\\d+$/.test(albumId)) throw new Error("Invalid album selection.");
+      const response = await fetch(`https://api.deezer.com/album/${albumId}`, {
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error(`Album details unavailable (${response.status}).`);
+      const item = await response.json() as any;
+      if (item.error) throw new Error(item.error.message ?? "Album details unavailable.");
+      const tracks = (item.tracks?.data ?? []).map((track: any) => ({
+        disc: track.disk_number ?? 1,
+        number: track.track_position ?? 0,
+        title: track.title ?? "",
+        durationSec: track.duration || undefined,
+      })).sort((a: any, b: any) => a.disc - b.disc || a.number - b.number);
+      return {
+        id: data.id,
+        title: item.title ?? "Untitled",
+        artist: item.artist?.name ?? "",
+        year: yearOf(item.release_date),
+        artworkUrl: item.cover_xl ?? item.cover_big ?? item.cover_medium,
+        trackCount: item.nb_tracks ?? tracks.length,
+        discCount: Math.max(1, item.nb_disk ?? 1, ...tracks.map((t: any) => t.disc)),
+        tracks,
+      };
+    }
+
     const json = await itunes(`lookup?entity=song&limit=200&id=${data.id}`);
     const c = json.results.find((r) => r.wrapperType === "collection");
     if (!c) return null;
