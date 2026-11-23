@@ -63,7 +63,7 @@ function PosterStudioPage() {
   const album: PosterAlbum | null = detail.data
     ? {
         key: detail.data.id,
-        sourceLabel: "Apple Music catalog",
+        sourceLabel: detail.data.id.startsWith("deezer:") ? "Deezer catalog" : "Apple catalog",
         isDemo: false,
         title: detail.data.title,
         artist: detail.data.artist,
@@ -141,7 +141,7 @@ function PosterStudioPage() {
         <div className="mb-3 flex items-center gap-2">
           <Search className="size-4 text-primary" />
           <h2 className="font-semibold">Find an album</h2>
-          <span className="ml-auto text-xs text-muted-foreground">Powered by Apple’s public catalog</span>
+          <span className="ml-auto text-xs text-muted-foreground">Apple catalog with Deezer fallback</span>
         </div>
         <form
           className="flex flex-col gap-2 sm:flex-row"
