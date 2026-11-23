@@ -53,7 +53,7 @@ export const getCatalogAlbum = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<CatalogAlbum | null> => {
     if (data.id.startsWith("deezer:")) {
       const albumId = data.id.slice("deezer:".length);
-      if (!/^\\d+$/.test(albumId)) throw new Error("Invalid album selection.");
+      if (!/^\d+$/.test(albumId)) throw new Error("Invalid album selection.");
       const response = await fetch(`https://api.deezer.com/album/${albumId}`, {
         headers: { Accept: "application/json" },
       });
