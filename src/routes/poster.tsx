@@ -351,7 +351,7 @@ function PosterStudioPage() {
               <div className="border-t border-border pt-4">
                 <h3 className="mb-3 text-sm font-semibold">Export poster</h3>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button onClick={() => handleExport("png")} disabled={!!exporting || (album.artworkUrl ? !artwork.data : false)} className="gap-2">
+                  <Button onClick={() => handleExport("png")} disabled={!!exporting || (album.artworkUrl ? !artwork.data && !artwork.isError : false)} className="gap-2">
                     {exporting === "png" ? <LoaderCircle className="size-4 animate-spin" /> : <FileImage className="size-4" />} PNG
                   </Button>
                   <Button variant="outline" onClick={() => handleExport("pdf")} disabled={!!exporting || (album.artworkUrl ? !artwork.data : false)} className="gap-2">
