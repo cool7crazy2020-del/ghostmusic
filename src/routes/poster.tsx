@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
-import { Download, FileImage, FileText, LoaderCircle, Music2, RotateCcw, Search, Sparkles } from "lucide-react";
+import { FileImage, FileText, LoaderCircle, Music2, RotateCcw, Search, Sparkles } from "lucide-react";
 
 import { Page } from "@/components/ghost/page-parts";
 import { Button } from "@/components/ui/button";
