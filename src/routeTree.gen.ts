@@ -15,6 +15,7 @@ import { Route as HistoryRouteImport } from './routes/history'
 import { Route as LibraryRouteImport } from './routes/library'
 import { Route as LikedRouteImport } from './routes/liked'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as PosterRouteImport } from './routes/poster'
 import { Route as AlbumAlbumIdRouteImport } from './routes/album.$albumId'
 import { Route as ApiSearchRouteImport } from './routes/api.search'
 import { Route as ArtistArtistIdRouteImport } from './routes/artist.$artistId'
@@ -51,6 +52,11 @@ const SearchRoute = SearchRouteImport.update({
   path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PosterRoute = PosterRouteImport.update({
+  id: '/poster',
+  path: '/poster',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AlbumAlbumIdRoute = AlbumAlbumIdRouteImport.update({
   id: '/album/$albumId',
   path: '/album/$albumId',
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/library': typeof LibraryRoute
   '/liked': typeof LikedRoute
   '/search': typeof SearchRoute
+  '/poster': typeof PosterRoute
   '/album/$albumId': typeof AlbumAlbumIdRoute
   '/api/search': typeof ApiSearchRoute
   '/artist/$artistId': typeof ArtistArtistIdRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/library': typeof LibraryRoute
   '/liked': typeof LikedRoute
   '/search': typeof SearchRoute
+  '/poster': typeof PosterRoute
   '/album/$albumId': typeof AlbumAlbumIdRoute
   '/api/search': typeof ApiSearchRoute
   '/artist/$artistId': typeof ArtistArtistIdRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/library': typeof LibraryRoute
   '/liked': typeof LikedRoute
   '/search': typeof SearchRoute
+  '/poster': typeof PosterRoute
   '/album/$albumId': typeof AlbumAlbumIdRoute
   '/api/search': typeof ApiSearchRoute
   '/artist/$artistId': typeof ArtistArtistIdRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/liked'
     | '/search'
+    | '/poster'
     | '/album/$albumId'
     | '/api/search'
     | '/artist/$artistId'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/liked'
     | '/search'
+    | '/poster'
     | '/album/$albumId'
     | '/api/search'
     | '/artist/$artistId'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/liked'
     | '/search'
+    | '/poster'
     | '/album/$albumId'
     | '/api/search'
     | '/artist/$artistId'
@@ -166,6 +178,7 @@ export interface RootRouteChildren {
   LibraryRoute: typeof LibraryRoute
   LikedRoute: typeof LikedRoute
   SearchRoute: typeof SearchRoute
+  PosterRoute: typeof PosterRoute
   AlbumAlbumIdRoute: typeof AlbumAlbumIdRoute
   ApiSearchRoute: typeof ApiSearchRoute
   ArtistArtistIdRoute: typeof ArtistArtistIdRoute
@@ -217,6 +230,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/poster': {
+      id: '/poster'
+      path: '/poster'
+      fullPath: '/poster'
+      preLoaderRoute: typeof PosterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/album/$albumId': {
       id: '/album/$albumId'
       path: '/album/$albumId'
@@ -262,6 +282,7 @@ const rootRouteChildren: RootRouteChildren = {
   LibraryRoute: LibraryRoute,
   LikedRoute: LikedRoute,
   SearchRoute: SearchRoute,
+  PosterRoute: PosterRoute,
   AlbumAlbumIdRoute: AlbumAlbumIdRoute,
   ApiSearchRoute: ApiSearchRoute,
   ArtistArtistIdRoute: ArtistArtistIdRoute,
