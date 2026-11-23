@@ -5,7 +5,7 @@ import { FileImage, FileText, LoaderCircle, Music2, RotateCcw, Search, Sparkles 
 
 import { Page } from "@/components/ghost/page-parts";
 import { Button } from "@/components/ui/button";
-import { fetchArtworkDataUrl, getCatalogAlbum, searchCatalogAlbums } from "@/lib/poster/albums.functions";
+import { fetchArtworkDataUrl, getCatalogAlbum } from "@/lib/poster/albums.functions";
 import { exportPdf, exportPng, fileSafe, renderPosterCanvas } from "@/lib/poster/export";
 import {
   FONTS,
@@ -42,7 +42,12 @@ function PosterStudioPage() {
 
   const search = useQuery({
     queryKey: ["poster-albums", submittedQuery],
-    queryFn: () => searchCatalogAlbums({ data: { q: submittedQuery } }),
+    queryFn: async () => {
+      const response = await fetch(`/api/search?q=${encodeURIComponent(submittedQuery)}&type=albums`);
+      const payload = await response.json() as { results?: Array<{ id: string; title: string; artist: string; year?: number; artworkUrl?: string; trackCount?: number }>; error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "Album search request failed.");
+      return payload.results ?? [];
+    },
     enabled: submittedQuery.trim().length > 0,
     staleTime: 60_000,
     retry: false,
@@ -158,7 +163,7 @@ function PosterStudioPage() {
           </Button>
         </form>
         {search.isFetching && <p className="mt-3 text-sm text-muted-foreground">Searching albums…</p>}
-        {search.isError && <p role="alert" className="mt-3 text-sm text-destructive">Album search is unavailable right now. Please try again in a moment.</p>}
+        {search.isError && <p role="alert" className="mt-3 text-sm text-destructive">{search.error instanceof Error ? search.error.message : "Album search is unavailable right now. Please try again in a moment."}</p>}
         {search.data && submittedQuery && (
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {search.data.map((item) => (
