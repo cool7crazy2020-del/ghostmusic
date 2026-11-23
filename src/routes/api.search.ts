@@ -51,7 +51,7 @@ export const Route = createFileRoute("/api/search")({
                 title: item.collectionName ?? "Untitled",
                 artist: item.artistName ?? "",
                 year: item.releaseDate ? new Date(item.releaseDate).getUTCFullYear() : undefined,
-                artworkUrl: item.artworkUrl100?.replace(/\\/\\d+x\\d+bb\\./, "/1500x1500bb."),
+                artworkUrl: item.artworkUrl100,
                 trackCount: item.trackCount,
               }));
 
